@@ -1,13 +1,15 @@
 :- module(ods_table,
 	  [ ods_DOM/3,			% +File, -DOM, +Options
 	    ods_load/1,			% :DOM
-	    ods_clean/0
+	    ods_clean/0,
+	    ods_eval/2			% +Expression, -Value
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(dcg/basics)).
 
 :- meta_predicate
-	ods_load(:).
+	ods_load(:),
+	ods_eval(:, -).
 
 %%	ods_DOM(+File -DOM, +Options) is det.
 %
@@ -103,7 +105,7 @@ load_cell(DOM, Style, State, Module) :-
 	->  true
 	;   cell_type(DOM, Type),
 	    cell_value(DOM, Type, Value),
-	    cell_formula(DOM, Formula),
+	    cell_formula(DOM, Table, Formula),
 	    cell_annotations(DOM, Annotations),
 	    forall(between(X0, End, X),
 		   assertz(Module:cell(Table,X,Y,
@@ -159,19 +161,19 @@ convert_annotation(DOM, annotation(Date, Author, Text)) :-
 	List = [Author|Rest],
 	atomic_list_concat(Rest, Text).
 
-%%	cell_formula(+DOM, -Formula) is det.
+%%	cell_formula(+DOM, +Table, -Formula) is det.
 
-cell_formula(DOM, Formula) :-
+cell_formula(DOM, Table, Formula) :-
 	xpath(DOM, /'table:table-cell'(@'table:formula'), OfficeFormula), !,
-	(   compile_formula(OfficeFormula, Formula)
+	(   compile_formula(OfficeFormula, Table, Formula)
 	->  true
 	;   print_message(warning, ods(convert_failed(formula, OfficeFormula))),
 	    Formula = OfficeFormula
 	).
-cell_formula(_, -).
+cell_formula(_, _, -).
 
 
-%%	compile_formula(OfficeFormula, Formula) is det.
+%%	compile_formula(OfficeFormula, Table, Formula) is det.
 %
 %	Compile a formula into a  Prolog   expression.  Cells are of the
 %	form cell(X,Y).
@@ -179,51 +181,51 @@ cell_formula(_, -).
 %	@see http://en.wikipedia.org/wiki/OpenFormula
 %	@see http://docs.oasis-open.org/office/v1.2/OpenDocument-v1.2-part2.html
 
-compile_formula(Text, Formula) :-
+compile_formula(Text, Table, Formula) :-
 	atom_codes(Text, Codes),
-	phrase(formula(Formula), Codes), !.
+	phrase(formula(Formula, Table), Codes), !.
 
-formula(Formula) -->
+formula(Formula, Table) -->
 	"of:=",
-	expression(Formula, 1200, _).
+	expression(Formula, 1200, _, Table).
 
-expression(Expr, Pri, RPri) -->
+expression(Expr, Pri, RPri, Table) -->
 	blanks,
 	(   ods_number(Expr0)
 	;   ods_string(Expr0)
 %	;   ods_array(Expr0)
-	;   ods_prefix_func(Expr0, Pri, RPri0)
-	;   "(", expression(Expr0, 1200, _), ")"
-	;   ods_function_call(Expr0)
-	;   ods_reference(Expr0)
+	;   ods_prefix_func(Expr0, Pri, RPri0, Table)
+	;   "(", expression(Expr0, 1200, _, Table), ")"
+	;   ods_function_call(Expr0, Table)
+	;   ods_reference(Expr0, Table)
 %	;   ods_quoted_label(Expr0)
 %	;   ods_automatic_intersection(Expr0)
 %	;   ods_named_expression(Expr0)
 %	;   ods_error(Expr0)
 	), blanks, !,
 	{ var(RPri0) -> RPri0 = 0 ; true },
-	ods_op_func(Expr0, Pri, RPri0, RPri, Expr).
+	ods_op_func(Expr0, Pri, RPri0, RPri, Expr, Table).
 
-ods_prefix_func(Expr, Pri, OpPri) -->
+ods_prefix_func(Expr, Pri, OpPri, Table) -->
 	ods_op(Op, prefix(OpPri, ArgPri)),
 	{ OpPri =< Pri },
-	expression(Expr0, ArgPri, _),
+	expression(Expr0, ArgPri, _, Table),
 	{ Expr =.. [Op,Expr0] }.
 
 %%	ods_op_func(+LeftExpr, +MaxPri, +LeftExprPri, -Expr) is semidet.
 
-ods_op_func(Left, Pri, PriL, RPri, Expr) -->
+ods_op_func(Left, Pri, PriL, RPri, Expr, Table) -->
 	ods_op(Op, infix(OpPri, LeftPri, RightPri)),
 	{ PriL =< LeftPri, OpPri =< Pri },
-	expression(Right, RightPri, _),
+	expression(Right, RightPri, _, Table),
 	{ Expr1 =.. [Op,Left,Right] },
-	ods_op_func(Expr1, Pri, OpPri, RPri, Expr).
-ods_op_func(Left, Pri, PriL, RPri, Expr) -->
+	ods_op_func(Expr1, Pri, OpPri, RPri, Expr, Table).
+ods_op_func(Left, Pri, PriL, RPri, Expr, Table) -->
 	ods_op(Op, postfix(OpPri, LeftPri)),
 	{ PriL =< LeftPri, OpPri =< Pri },
 	{ Expr1 =.. [Op,Left] },
-	ods_op_func(Expr1, Pri, OpPri, RPri, Expr).
-ods_op_func(Expr, _, Pri, Pri, Expr) -->
+	ods_op_func(Expr1, Pri, OpPri, RPri, Expr, Table).
+ods_op_func(Expr, _, Pri, Pri, Expr, _) -->
 	"".
 
 ods_op(Op, Type) -->
@@ -319,16 +321,16 @@ str_code(C) --> [C], { C \== 0'" }.
 
 %%	ods_function_call(Expr0)// is semidet.
 
-ods_function_call(Expr) -->
+ods_function_call(Expr, Table) -->
 	function_name(Name),
-	blanks, "(", parameter_list(Args),
+	blanks, "(", parameter_list(Args, Table),
 	{ Expr =.. [Name|Args] }.
 
-parameter_list([H|T]) -->
-	expression(H, 1200, _), !, blanks,
+parameter_list([H|T], Table) -->
+	expression(H, 1200, _, Table), !, blanks,
 	(   ";"
 	->  blanks,
-	    parameter_list(T)
+	    parameter_list(T, Table)
 	;   ")"
 	->  { T = [] }
 	).
@@ -358,22 +360,22 @@ letter_xml(C) --> [C], { xml_base(C) ;
 			 xml_ideographic(C)
 		       }, !.
 
-%%	ods_reference(Expr0)
+%%	ods_reference(Expr0, Table)
 
-ods_reference(Expr) -->
-	"[", reference(Expr), "]".
+ods_reference(Expr, Table) -->
+	"[", reference(Expr, Table), "]".
 
-reference(ext(IRI, Range)) -->
+reference(ext(IRI, Range), Table) -->
 	"'", !, string(Codes), "'#",
 	{ atom_codes(IRI, Codes) },
-	range_address(Range).
-reference(Range) -->
-	range_address(Range).
-reference(ref(error)) -->
+	range_address(Range, Table).
+reference(Range, Table) -->
+	range_address(Range, Table).
+reference(ref(error), _) -->
 	"#REF!".
 
-range_address(Ref) -->
-	sheet_locator_or_empty(Sheet),
+range_address(Ref, Table) -->
+	sheet_locator_or_empty(Sheet, Table),
 	".",
 	(   cell(SX,SY)
 	->  (   ":."
@@ -390,7 +392,7 @@ range_address(Ref) -->
 	    row(End),
 	    { Ref = row_range(Sheet, Start, End) }
 	).
-range_address(Ref) -->
+range_address(Ref, _Table) -->
 	sheet_locator(Sheet),
 	".",
 	(   cell(SX, SY)
@@ -407,9 +409,9 @@ range_address(Ref) -->
 	    { Ref = xrow_range(Sheet, Start, Sheet2, End) }
 	).
 
-sheet_locator_or_empty(Sheet) -->
+sheet_locator_or_empty(Sheet, _) -->
 	sheet_locator(Sheet), !.
-sheet_locator_or_empty('') --> "".
+sheet_locator_or_empty(Table, Table) --> "".
 
 sheet_locator(Sheet) -->
 	sheet_name(Name),
@@ -479,6 +481,46 @@ sq_codes([]) -->
 
 sq_code(0'\') --> "''", !.
 sq_code(C) --> [C], { C \== 0'\' }.
+
+
+		 /*******************************
+		 *    EXPRESSION EVALUATION	*
+		 *******************************/
+
+%%	ods_eval(:Expression, -Value) is det.
+%
+%	Evaluate an expression.
+
+ods_eval(Module:Expression, Value) :-
+	ods_eval(Expression, Value, Module).
+
+ods_eval(Expr, Value, _) :-
+	number(Expr), !,
+	Value = Expr.
+ods_eval(cell(Sheet, X, Y), Value, M) :- !,
+	(   M:cell(Sheet, X, Y, Value, _Type, _, _, _)
+	->  true
+	;   existence_error(cell, cell(Sheet, X, Y))
+	).
+ods_eval(Expr, Value, M) :-
+	callable(Expr),
+	Expr =.. [Func|ArgExprs],
+	maplist(ods_evalm(M), ArgExprs, Args),
+	Expr1 =.. [Func|Args],
+	eval(Expr1, Value).
+
+ods_evalm(M, Expr, Value) :-
+	ods_eval(Expr, Value, M).
+
+eval(A-B, Value) :-
+	Value is A-B.
+eval(A*B, Value) :-
+	Value is A*B.
+eval(A/B, Value) :-
+	Value is A/B.
+eval('%'(A), Value) :-
+	A >= 0, A =< 100,
+	Value is A/100.0.
 
 
 		 /*******************************
