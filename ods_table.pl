@@ -38,7 +38,7 @@ archive_dom(Archive, DOM, Options) :-
 %	    - table(Name, Style)
 %	    - col(Table, X, Style)
 %	    - row(Table, Y, Style)
-%	    - cell(Table, X, Y, Value, Type, Formula, Style)
+%	    - cell(Table, X, Y, Value, Type, Formula, Style, Annotation)
 %	    - style(Style, Properties)
 
 ods_load(Module:DOM) :-
