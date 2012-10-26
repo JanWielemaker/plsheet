@@ -542,8 +542,10 @@ eval(A*B, Value) :-
 eval(A/B, Value) :-
 	Value is A/B.
 eval('%'(A), Value) :-
-	A >= 0, A =< 100,
-	Value is A/100.0.
+	(   A >= 0, A =< 100
+	->  Value is A/100.0
+	;   domain_error(percentage, A)
+	).
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
 
