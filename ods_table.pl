@@ -381,7 +381,7 @@ reference(ext(IRI, Range), Table) -->
 	range_address(Range, Table).
 reference(Range, Table) -->
 	range_address(Range, Table).
-reference(ref(error), _) -->
+reference(error('#REF!'), _) -->
 	"#REF!".
 
 range_address(Ref, Table) -->
@@ -512,18 +512,31 @@ ods_eval(cell(Sheet, X, Y), Value, M) :- !,
 	->  true
 	;   existence_error(cell, cell(Sheet, X, Y))
 	).
+ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
+	(   SX =:= EX
+	->  findall(V, (between(SY,EY,Y), ods_eval(cell(Sheet,SX,Y), V, M)), List)
+	;   SY =:= EY
+	->  findall(V, (between(SX,EX,X), ods_eval(cell(Sheet,X,SY), V, M)), List)
+	;   print_message(warning, ods(eval(cell_range(Sheet, SX,SY, EX,EY))))
+	).
 ods_eval(Expr, Value, M) :-
 	callable(Expr),
 	Expr =.. [Func|ArgExprs],
 	maplist(ods_evalm(M), ArgExprs, Args),
 	Expr1 =.. [Func|Args],
-	eval(Expr1, Value).
+	(   eval(Expr1, Value)
+	->  true
+	;   print_message(warning, ods(eval(Expr1))),
+	    Value = error(Expr1)
+	).
 
 ods_evalm(M, Expr, Value) :-
 	ods_eval(Expr, Value, M).
 
 eval(A-B, Value) :-
 	Value is A-B.
+eval(A+B, Value) :-
+	Value is A+B.
 eval(A*B, Value) :-
 	Value is A*B.
 eval(A/B, Value) :-
@@ -531,6 +544,8 @@ eval(A/B, Value) :-
 eval('%'(A), Value) :-
 	A >= 0, A =< 100,
 	Value is A/100.0.
+eval('SUM'(List), Value) :-
+	sum_list(List, Value).
 
 
 		 /*******************************

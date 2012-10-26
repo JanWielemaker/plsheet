@@ -12,16 +12,31 @@ load :-
 	ods_clean,
 	ods_load(File).
 
-eval(X,Y) :-
-	sheet(Sheet),
+eval(Sheet, X,Y) :-
 	cell(Sheet, X, Y, Value, _Type, Formula, _Style, _Annotation),
 	Formula \== (-),
-	format('Eval ~p~n', [Formula]),
+	format('Eval cell(~q,~q) ~p~n', [X, Y, Formula]),
 	catch(ods_eval(Formula, OurValue),
 	      E,
 	      ( print_message(error, E),
 		fail)),
-	format('~w,~w --> ~q [~q]~n', [X, Y, OurValue, Value]).
+	(   same_values(OurValue, Value)
+	->  format('OK: cell(~w,~w)~n', [X,Y]),
+	    fail
+	;   format('cell(~w,~w) --> ~q [~q]~n', [X, Y, OurValue, Value])
+	).
+
+same_values(X, Y) :-
+	X == Y.
+same_values(X, Y) :-
+	number(X), number(Y),
+	X =:= Y, !.
+same_values(X, Y) :-
+	number(X), number(Y),
+	( float(X) ; float(Y) ), !,
+	X/Y-1 < 0.000000001.
+
+
 
 p(X,Y) :-
 	sheet(Sheet),
