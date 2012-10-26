@@ -85,12 +85,13 @@ load_row(DOM, Style, State, Module) :-
 	arg(2, State, Y),
 	arg(3, State, Table),
 	assertz(Module:row(Table, Y, Style)),
-	forall(xpath(DOM, 'table:table-cell'(@'table:style-name'=CStyle), Cell),
-	       load_cell(Cell, CStyle, State, Module)),
+	debug(ods(row), 'Processing row ~q', [Y]),
+	forall(xpath(DOM, 'table:table-cell'(self), Cell),
+	       load_cell(Cell, State, Module)),
 	NextY is Y + 1,
 	nb_setarg(2, State, NextY).
 
-load_cell(DOM, Style, State, Module) :-
+load_cell(DOM, State, Module) :-
 	DOM = element(_, CellAttrs, Content),
 	arg(1, State, X0),
 	arg(2, State, Y),
@@ -102,18 +103,23 @@ load_cell(DOM, Style, State, Module) :-
 	),
 	End is X0+Rep-1,
 	(   Content == []
-	->  true
-	;   cell_type(DOM, Type),
-	    cell_value(DOM, Type, Value),
-	    cell_formula(DOM, Table, Formula),
-	    cell_annotations(DOM, Annotations),
-	    forall(between(X0, End, X),
-		   assertz(Module:cell(Table,X,Y,
-				       Value,
-				       Type,
-				       Formula,
-				       Style,
-				       Annotations)))
+	->  debug(ods(cell), '~w empty cells', [Rep])
+	;   (   cell_type(DOM, Type),
+	        cell_style(DOM, Style),
+		cell_value(DOM, Type, Value),
+		cell_formula(DOM, Table, Formula),
+		cell_annotations(DOM, Annotations)
+	    ->  forall(between(X0, End, X),
+		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
+			 assertz(Module:cell(Table,X,Y,
+					     Value,
+					     Type,
+					     Formula,
+					     Style,
+					     Annotations))
+		       ))
+	    ;	print_message(warning, ods(convert_failed(cell, DOM)))
+	    )
 	),
 	NextX is End+1,
 	nb_setarg(1, State, NextX).
@@ -121,6 +127,10 @@ load_cell(DOM, Style, State, Module) :-
 cell_type(DOM, Type) :-
 	xpath(DOM, /'table:table-cell'(@'office:value-type'), OfficeType),
 	OfficeType = Type.
+
+cell_style(DOM, Style) :-
+	xpath(DOM, /'table:table-cell'(@'table:style-name'), Style), !.
+cell_style(_, default).			% TBD: Use default column style
 
 cell_value(DOM, Type, Value) :-
 	xpath(DOM, /'table:table-cell'(@'office:value'), OfficeValue), !,
