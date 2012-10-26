@@ -58,7 +58,9 @@ load_table(DOM, Name, TStyle, Module) :-
 	assertz(Module:table(Name, TStyle)),
 	State = state(1,1,Name,_),
 	forall(xpath(DOM, 'table:table-column'(@'table:style-name'=Style), Col),
-	       load_column(Col, Style, State, Module)).
+	       load_column(Col, Style, State, Module)),
+	forall(xpath(DOM, 'table:table-row'(@'table:style-name'=Style), Col),
+	       load_row(Col, Style, State, Module)).
 
 load_column(element(_, CollAttrs, []), Style, State, Module) :-
 	arg(1, State, X0),
@@ -74,6 +76,65 @@ load_column(element(_, CollAttrs, []), Style, State, Module) :-
 	NextX is End+1,
 	nb_setarg(1, State, NextX).
 
+load_row(DOM, Style, State, Module) :-
+	DOM = element(_, _RowAttrs, _),
+	nb_setarg(1, State, 1),
+	arg(2, State, Y),
+	arg(3, State, Table),
+	assertz(Module:row(Table, Y, Style)),
+	forall(xpath(DOM, 'table:table-cell'(@'table:style-name'=CStyle), Cell),
+	       load_cell(Cell, CStyle, State, Module)),
+	NextY is Y + 1,
+	nb_setarg(2, State, NextY).
+
+load_cell(DOM, Style, State, Module) :-
+	DOM = element(_, CellAttrs, Content),
+	arg(1, State, X0),
+	arg(2, State, Y),
+	arg(3, State, Table),
+	(   memberchk('table:number-columns-repeated'=RepA, CellAttrs),
+	    atom_number(RepA, Rep)
+	->  true
+	;   Rep = 1
+	),
+	End is X0+Rep-1,
+	(   Content == []
+	->  true
+	;   cell_type(DOM, Type),
+	    cell_value(DOM, Type, Value),
+	    cell_formula(DOM, Formula),
+	    forall(between(X0, End, X),
+		   assertz(Module:cell(Table,X,Y,Value,Type,Formula,Style)))
+	),
+	NextX is End+1,
+	nb_setarg(1, State, NextX).
+
+cell_type(DOM, Type) :-
+	xpath(DOM, /'table:table-cell'(@'office:value-type'), OfficeType),
+	OfficeType = Type.
+
+cell_value(DOM, Type, Value) :-
+	xpath(DOM, /'table:table-cell'(@'office:value'), OfficeValue), !,
+	convert_value(Type, OfficeValue, Value).
+cell_value(DOM, string, Value) :-
+	xpath(DOM, /'table:table-cell'(normalize_space), Value).
+
+convert_value(float, Text, Value) :- !,
+	(   atom_number(Text, Value0)
+	->  Value is float(Value0)
+	;   type_error(float, Text)
+	).
+convert_value(percentage, Text, Value) :- !,
+	(   atom_number(Text, Value0)
+	->  Value is float(Value0)
+	;   type_error(percentage, Text)
+	).
+convert_value(Type, Value, Value) :-
+	print_message(warning, ods(unknown_type(Type))).
+
+cell_formula(_, -).
+
+
 %%	ods_clean
 %
 %	Remove saved facts from the database
@@ -86,5 +147,5 @@ ods_clean :-
 	retractall(M:table(_,_)),
 	retractall(M:col(_,_,_)),
 	retractall(M:row(_,_,_)),
-	retractall(M:cell(_,_,_,_,_,_)),
+	retractall(M:cell(_,_,_,_,_,_,_)),
 	retractall(M:style(_,_)).
