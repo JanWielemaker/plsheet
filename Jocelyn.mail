@@ -1,0 +1,289 @@
+Received: from PEXEE011B.vu.local (130.37.164.17) by PEXHB011B (130.37.236.65)
+ with Microsoft SMTP Server (TLS) id 14.2.298.4; Sat, 27 Oct 2012 22:00:34
+ +0200
+Received: from filter3-utr.mf.surf.net (195.169.124.154) by mailin.vu.nl
+ (130.37.164.17) with Microsoft SMTP Server (TLS) id 14.2.298.4; Sat, 27 Oct
+ 2012 22:00:34 +0200
+Received: from balrog.mythic-beasts.com (balrog.mythic-beasts.com
+ [93.93.130.6])	by filter3-utr.mf.surf.net (8.14.3/8.14.3/Debian-9.4) with
+ ESMTP id q9RK0WdE002487	for <J.Wielemaker@vu.nl>; Sat, 27 Oct 2012 22:00:33
+ +0200
+Received: from [93.93.130.49] (helo=sphinx.mythic-beasts.com)	by
+ balrog.mythic-beasts.com with esmtp (Exim 4.69)	(envelope-from
+ <popx@j-paine.org>)	id 1TSCYa-0003Pa-H7	for J.Wielemaker@vu.nl; Sat, 27 Oct
+ 2012 21:00:32 +0100
+Received: from popx (helo=localhost)	by sphinx.mythic-beasts.com with
+ local-esmtp (Exim 4.72)	(envelope-from <popx@j-paine.org>)	id
+ 1TSCZp-0000qw-SY	for J.Wielemaker@vu.nl; Sat, 27 Oct 2012 21:01:52 +0100
+Date: Sat, 27 Oct 2012 21:01:49 +0100
+From: Jocelyn Ireson-Paine <popx@j-paine.org>
+X-X-Sender: popx@sphinx.mythic-beasts.com
+To: Jan Wielemaker <J.Wielemaker@vu.nl>
+Subject: Re: Speardsheets
+In-Reply-To: <508A73D6.6050602@vu.nl>
+Message-ID: <alpine.LRH.2.02.1210272057530.7371@sphinx.mythic-beasts.com>
+References: <5089355E.5020702@vu.nl> <alpine.LRH.2.02.1210261137030.14096@sphinx.mythic-beasts.com> <508A73D6.6050602@vu.nl>
+User-Agent: Alpine 2.02 (LRH 1266 2009-07-14)
+Content-Type: multipart/mixed;
+	boundary="1566387330-823825051-1351367894=:7371"
+Content-ID: <alpine.LRH.2.02.1210272058240.7371@sphinx.mythic-beasts.com>
+X-Spam-Status: No, score=-0.0
+X-BlackCat-Spam-Score: 0
+X-Bayes-Prob: 0.0001 (Score 0, tokens from: @@RPTN)
+X-Spam-Score: -1.10 () [Tag at 6.00] SPF(none:0),CC(GB:-0.1),RBL(RPRL-ham:-1.0)
+X-CanIt-Geo: ip=93.93.130.6; country=GB; latitude=54.0000; longitude=-2.0000; http://maps.google.com/maps?q=54.0000,-2.0000&z=6
+X-CanItPRO-Stream: vu:Medium (inherits from vu:default,base:default)
+X-Canit-Stats-ID: 08Igk0xpb - fb8fc17e364e - 20121027 (trained as not-spam)
+X-Scanned-By: CanIt (www . roaringpenguin . com) on 195.169.124.154
+Return-Path: popx@j-paine.org
+X-MS-Exchange-Organization-AVStamp-Mailbox: MSFTFF;1;0;0 0 0
+X-MS-Exchange-Organization-AuthSource: PEXEE011B.vu.local
+X-MS-Exchange-Organization-AuthAs: Anonymous
+MIME-Version: 1.0
+
+--1566387330-823825051-1351367894=:7371
+Content-Type: text/plain; charset="ISO-8859-15"; format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-ID: <alpine.LRH.2.02.1210272058241.7371@sphinx.mythic-beasts.com>
+
+Hi Jan,
+
+That model-discovery project is one I'd love to have. It would be so=20
+useful in stimulating my structure-discovery work!
+
+It sounds as though you're satisfied that you can extract formulae and=20
+other information from Excel. Does Excel now output files in Open Document=
+=20
+Format, or do you need to convert them?
+
+Myself, I've tried various approaches to extracting formulae etc. First,=20
+making Excel save them as SYLK. This is an old-fashioned Microsoft text=20
+representation of a spreadsheet, intended for input to other programs such=
+=20
+as Multiplan. It's easy to parse, but doesn't include all the information=20
+about formats and other properties.
+
+Second, Excel 2003 introduced output to XML. So I've used your XML parser=20
+to read these files, searching for the appropriate XML elements. This was=20
+fairly easy to code, but I ran into memory problems with big spreadsheets,=
+=20
+in particular with a a 200-sheet monster forecaster for social housing=20
+finances which contained 60 interconnected 20=D740 tables. (See=20
+http://arxiv.org/abs/0803.0163 , "Rapid Spreadsheet Reshaping with=20
+Excelsior: multiple drastic changes to content and layout are easy when=20
+you represent enough structure".)
+
+Third, a different approach. I wrote a VBA macro that looped around all=20
+the cells in a spreadsheet and dumped their contents to a text file as=20
+Prolog facts. I could then 'consult' this into Prolog and further analyse=20
+it. The file was much smaller than Excel XML files, and I made it even=20
+smaller by making the VBA detect runs of identical formulae and output=20
+them as only one line. The advantage of this approach was the smallness of=
+=20
+the file being read by Prolog, and the fact that I could customise the=20
+macro to dump only what I needed. The disadvantage was that one needed=20
+Windows and Excel in order to run the macro. By the way, if the macro is=20
+any use to you, I'd be happy to send it.
+
+Fourth, I tried Fabien Todescato's library for connecting Prolog to Excel.=
+=20
+But I couldn't make it work consistently, and I couldn't get the expert=20
+help I needed to modify the .COM programming and call it via Prolog's=20
+foreign-language interface. It would have taken too long for me to try=20
+this on my own. You're lucky, because as a grant-holder, you can allocate=20
+such tasks to a student or get help from your I.T. department...
+
+As far as parsing formulae goes, I've written two tokenisers and parsers,=20
+in Prolog, which I'd also be happy to give you. Googling "excel formula=20
+grammar" finds a lot of references, but I don't know which ones actually=20
+work. http://homepages.ecs.vuw.ac.nz/~elvis/db/Excel.shtml ,=20
+"Invesitgation into Excel Syntax and a Formula Grammar", looks reasonable.=
+=20
+You need to be able to parse array formulae as well as scalar formulae,=20
+and recognise error values such as #NAME.
+
+Also, to decide whether you want to treat cells that contain values such=20
+as 1 or "A" differently from cells that contain constant formulae such as=20
+=3D1 or =3D"A".
+
+After parsing comes the structure discovery. As you know, one thing I did=20
+was to look for runs of formulae in which a subexpression changes on each=20
+step by 1 in an integer or address. For example:
+   3*(A1+1)
+   3*(A2+1)
+or
+   3*(A1+1)
+   3*(A1+2)
+There are examples in several of my papers: a good one is the blog posting=
+=20
+at http://www.j-paine.org/dobbs/structure_discovery.html , "How to Reveal=20
+Implicit Structure in Spreadsheets". For example,
+   Sheet1!E8 =3D Sheet1!C8-Sheet1!D8
+   Sheet1!E9 =3D Sheet1!C9-Sheet1!D9
+   Sheet1!E10 =3D Sheet1!C10-Sheet1!D10
+become
+   Sheet1!E[V1 in 8:10] =3D Sheet1!C[V1]-Sheet1!D[V1]
+where V1 is a variable that my algorithm introduces. The algorithm walks=20
+over both terms in the same way that unification does. I suspect it's a=20
+kind of anti-unification.
+
+Another thing is to make formulae more intelligible, rewriting them by=20
+mapping addresses to elements of named arrays. For example,
+   Sheet1!E8 =3D Sheet1!C8-Sheet1!D8
+to
+   net_profit[1] =3D income[1]-expenses[1]
+My software allows the user to specify mappings from cell ranges to named=20
+arrays in an input file, which it will then read and use in rewriting the=20
+formulae accordingly.
+
+As you pointed out, headers are useful in guessing the names to use. It's=20
+fairly easy to code something that picks out the labels in a region that=20
+one has identified roughly by eye. To discover how long the range=20
+underneath or to the right of the label is, I've used the run detector=20
+mentioned above. Combined with rewriting formulae, this can make the=20
+ranges very intelligible. In the example above,
+   Sheet1!E8 =3D Sheet1!C8-Sheet1!D8
+   Sheet1!E9 =3D Sheet1!C9-Sheet1!D9
+   Sheet1!E10 =3D Sheet1!C10-Sheet1!D10
+which without renaming become this after run detection:
+   Sheet1!E[V1 in 8:10] =3D Sheet1!C[V1]-Sheet1!D[V1]
+becomes
+   net_profit[V0] =3D income[V0]-expenses[V0]
+with renaming and run detection.
+
+Here is some other work on detecting labels and structure:
+
+http://www.datadefractor.com/Portals/0/Documents/Structuring%20The%20Unstru=
+ctured.pdf=20
+,
+"Structuring the Unstructured: How to Dimensionalize Semi-Structured=20
+Business Data".
+
+http://arxiv.org/abs/0802.3924 ,
+"A Toolkit for Scalable Spreadsheet Visualization",
+Markus Clermont.
+
+http://web.engr.orst.edu/~erwig/papers/TypeInf_PPDP06.pdf ,
+"Type Inference for Spreadsheets",
+Robin Abraham and Martin Erwig.
+
+http://www.google.co.uk/url?sa=3Dt&rct=3Dj&q=3Dlabels+and+type+inference+in=
++spreadsheets&source=3Dweb&cd=3D3&ved=3D0CC0QFjAC&url=3Dhttp%3A%2F%2Fcitese=
+erx.ist.psu.edu%2Fviewdoc%2Fdownload%3Fdoi%3D10.1.1.153.6517%26rep%3Drep1%2=
+6type%3Dpdf&ei=3DhDmMUKisOujE0QXv5IDwBg&usg=3DAFQjCNEY4wUmgx3xdnFvOjmnCO9Gs=
+D7Baw
+"Software Engineering for Spreadsheets",
+Martin Erwig.
+
+By the way, I wonder whether these are any use to you on ecological
+models:
+
+http://www.era.lib.ed.ac.uk/handle/1842/4679 ,
+"The Use of Prolog for Improving the Rigour and Accessibility of=20
+Ecological Modelling",
+Alan Bundy, R. Muetzelfeldt, D. Robertson, M. Uschold.
+
+http://www.research.ed.ac.uk/portal/files/412346/Eco_Logic_Logic_Based_Appr=
+oaches_to_Ecological_Modelling.pdf=20
+,
+"Eco-Logic: Logic-Based Approaches to Ecological Modelling",
+D. Robertson, A. Bundy, R. Muetzelfeldt, M. Haggith, M. Uschold.
+
+You might be interested in=20
+http://www.j-paine.org/excelsior_2004/intro.html . This is an early=20
+version of my structure-discovery program, to which I gave a=20
+Prolog-TLI-style interface with a command language that could pass=20
+spreadsheets around as values and operate on them.
+
+Cheers,
+
+Jocelyn Ireson-Paine
+http://www.j-paine.org
++44 (0)7768 534 091
+
+Jocelyn's Cartoons:
+http://www.j-paine.org/blog/jocelyns_cartoons/
+
+On Fri, 26 Oct 2012, Jan Wielemaker wrote:
+
+> Hi Jocelyn,
+>
+> Thanks for getting back.  This (sub-)project is about discovering the=20
+> underlying `model' from spreadsheets as they are used in science, in
+> particular environmental research.  What we are mostly after is what
+> the numbers mean.  I.e., relate them to units and properties of
+> concepts.  For example, a car (concept) produces (property) X (the number=
+)=20
+> Kg/Km (unit) CO2 (concept).  To do this, we need to reason
+> about layout, colours/fonts to find headers, link text fields to
+> ontologies and know what the formulas relate.  For now, we won't
+> assume that the spreadsheet contains errors, but that may change :-)
+>
+> My job is mostly to get the infrastructure in place.  I'm (as we
+> speak) writing a parser for ODS (the Open Document Standard).  That
+> is fairly trivial; won't take more than 1 or 2 days to get all the
+> relevant stuff into Prolog facts.  My next step is to define some
+> pattern primitives and demonstrate the basics to a PhD student.
+> She can do the real work :-)
+>
+> Oh, the sizes vary wildly.  From a few hundred to a hundredthousands
+> of cells.
+>
+> I'm now working the expression grammar (defined in=20
+> http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part2.html=
+#__RefHeading__1017930_715980110).=20
+> If I'm doing double
+> work, please shout :-)  As said, I'm probably not very interested
+> in executing the functions, but if you happen to have a library of
+> them, it might come handy.
+>
+> 	Cheers --- Jan
+>
+>
+>
+> On 10/26/2012 12:57 PM, Jocelyn Ireson-Paine wrote:
+>> Hi Jan,
+>>=20
+>> Yes, I'm fine thanks.
+>>=20
+>> I haven't entirely stopped working on structure discovery, but haven't
+>> done much recently because I wasn't able to get funding. If I could, I'd
+>> continue. There was also the difficulty of connecting SWI-Prolog to
+>> Excel. I do still have the Prolog code that I wrote up in my papers, but
+>> it isn't completely automatic (because analysis often needs a lot of
+>> trial and error), and the interface is crude. I don't think it would be
+>> easy for anyone else to use, and I'd have to explain the commands.
+>>=20
+>> How big is the spreadsheet you need to analyse, i.e. how many sheets and
+>> cells per sheet? What do you need to do with it? Are you trying to
+>> compile its formulae into some other language? Do you need to check for
+>> errors, or are you reasonably certain that the spreadsheet does what
+>> it's meant to?
+>>=20
+>> Cheers,
+>>=20
+>> Jocelyn Ireson-Paine
+>> http://www.j-paine.org
+>> +44 (0)7768 534 091
+>>=20
+>> Jocelyn's Cartoons:
+>> http://www.j-paine.org/blog/jocelyns_cartoons/
+>>=20
+>> On Thu, 25 Oct 2012, Jan Wielemaker wrote:
+>>=20
+>>> Hi Jocelyn,
+>>>=20
+>>> All ok?  We need to do some spreadsheet structure discovery for a
+>>> program, so I came along your work.  It seems pretty old, so I assume
+>>> you moved on.  I was wondering whether this software is available and
+>>> whether you have any recommendations on this topic.  What you describe
+>>> is follows more or less my first intuition.  In Bonn I recently attende=
+d
+>>> a talk proposing CHR for this job.
+>>>
+>>>     Thanks --- Jan
+>>>=20
+>
+>=
+
+--1566387330-823825051-1351367894=:7371--
