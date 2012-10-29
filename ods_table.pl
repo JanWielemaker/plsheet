@@ -642,14 +642,7 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	;   print_message(warning, ods(eval(cell_range(Sheet, SX,SY, EX,EY))))
 	).
 ods_eval(eval(Expr), Value, M) :- !,
-	Expr =.. [Func|ArgExprs],
-	maplist(ods_evalm(M), ArgExprs, Args),
-	Expr1 =.. [Func|Args],
-	(   eval(Expr1, Value)
-	->  true
-	;   print_message(warning, ods(eval(Expr1))),
-	    Value = error(Expr1)
-	).
+	eval_function(Expr, Value, M).
 ods_eval(A+B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
@@ -679,12 +672,6 @@ ods_eval('%'(A), Value, M) :- !,
 	->  Value is VA/100.0
 	;   domain_error(percentage, VA)
 	).
-ods_eval('IF'(Cond, Then, Else), Value, M) :- !,
-	ods_eval(Cond, VC, M),
-	(   VC == @true
-	->  ods_eval(Then, Value, M)
-	;   ods_eval(Else, Value, M)
-	).
 ods_eval(X, X, _).
 
 ods_evalm(M, Expr, Value) :-
@@ -698,8 +685,35 @@ ods_evalm(M, Expr, Value) :-
 ods_eval_if_exists(cell(Sheet,X,Y), Value, M) :-
 	M:cell(Sheet, X, Y, Value, _Type, _, _, _), !.
 
+eval_function('IF'(Cond, Then, Else), Value, M) :- !,
+	ods_eval(Cond, VC, M),
+	(   VC == @true
+	->  ods_eval(Then, Value, M)
+	;   ods_eval(Else, Value, M)
+	).
+eval_function(Expr, Value, M) :-
+	Expr =.. [Func|ArgExprs],
+	maplist(ods_evalm(M), ArgExprs, Args),
+	Expr1 =.. [Func|Args],
+	(   eval(Expr1, Value)
+	->  true
+	;   print_message(warning, ods(eval(Expr1))),
+	    Value = error(Expr1)
+	).
+
+
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
+eval('RANK'(V, List), Rank) :-
+	msort(List, Sorted),
+	reverse(Sorted, Descending),
+	nth1(Rank, Descending, V).
+eval('RANK'(V, List, Order), Rank) :-
+	(   Order =:= 0
+	->  eval('RANK'(V, List), Rank)
+	;   msort(List, Ascending),
+	    nth1(Rank, Ascending, V)
+	).
 eval('FALSE', @false).
 eval('TRUE', @true).
 

@@ -20,18 +20,27 @@ load(File) :-
 	ods_load(File).
 
 eval(Sheet, X,Y) :-
-	cell(Sheet, X, Y, Value, _Type, Formula, _Style, _Annotation),
-	Formula \== (-),
-	format('Testing cell(~q,~q,~q) ~p~n', [Sheet,X,Y, Formula]),
-	catch(ods_eval(Formula, OurValue),
-	      E,
-	      ( print_message(error, E),
-		fail)),
-	(   same_values(OurValue, Value)
-	->  format('\tOK: cell(~q,~q,~q)~n', [Sheet,X,Y]),
-	    fail
-	;   format('\tWRONG: cell(~q,~q,~q) --> ~q [~q]~n', [Sheet, X, Y, OurValue, Value])
-	).
+	eval(Sheet, X,Y, fail).
+
+eval(Sheet, X,Y, Cont) :-
+	forall(cell(Sheet, X, Y, Value, _Type, Formula, _Style, _Annotation),
+	       (   Formula == (-)
+	       ->  true
+	       ;   format('Testing cell(~q,~q,~q) ~p~n', [Sheet,X,Y, Formula]),
+		   catch(ods_eval(Formula, OurValue),
+			 E,
+			 ( print_message(error, E),
+			   Cont)),
+		   (   var(E)
+		   ->  (   same_values(OurValue, Value)
+		       ->  format('\tOK: cell(~q,~q,~q)~n', [Sheet,X,Y])
+		       ;   format('\tWRONG: cell(~q,~q,~q) --> ~q [OK: ~q]~n',
+				  [Sheet, X, Y, OurValue, Value]),
+			   Cont
+		       )
+		   ;   true
+		   )
+	       )).
 
 same_values(X, Y) :-
 	X == Y.
@@ -41,7 +50,10 @@ same_values(X, Y) :-
 same_values(X, Y) :-
 	number(X), number(Y),
 	( float(X) ; float(Y) ), !,
-	X/Y-1 < 0.000000001.
+	(   Y =\= 0
+	->  X/Y-1 < 0.000000001
+	;   abs(X-Y) < 0.000000001
+	).
 
 
 
