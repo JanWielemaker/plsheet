@@ -7,6 +7,10 @@ dom(DOM) :-
 	file(File),
 	ods_DOM(File, DOM, []).
 
+dom(Member, DOM) :-
+	file(File),
+	ods_DOM(File, DOM, [member(Member)]).
+
 load :-
 	file(File),
 	ods_clean,
