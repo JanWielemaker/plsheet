@@ -26,7 +26,7 @@ eval(Sheet, X,Y, Cont) :-
 	forall(cell(Sheet, X, Y, Value, _Type, Formula, _Style, _Annotation),
 	       (   Formula == (-)
 	       ->  true
-	       ;   format('Testing ~p ~p [OK: ~q]~n',
+	       ;   format('Testing eval(~q) ~p [OK: ~q]~n',
 			  [cell(Sheet,X,Y), Formula, Value]),
 		   catch(ods_eval(Formula, OurValue),
 			 E,

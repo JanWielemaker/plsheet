@@ -625,11 +625,8 @@ not_in_sheet_name(0'$).
 ods_eval(Module:Expression, Value) :-
 	ods_eval(Expression, Value, Module).
 
-ods_eval(cell(Sheet, X, Y), Value, M) :- !,
-	(   M:cell(Sheet, X, Y, Value0, _Type, _, _, _)
-	->  Value = Value0
-	;   existence_error(cell, cell(Sheet, X, Y))
-	).
+ods_eval(cell(Sheet,X,Y), Value, Module) :- !,
+	cell_value(Sheet,X,Y, _Type, Value, Module).
 ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	(   SX =:= EX
 	->  findall(V, (between(SY,EY,Y),
@@ -644,20 +641,20 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 ods_eval(eval(Expr), Value, M) :- !,
 	eval_function(Expr, Value, M).
 ods_eval(A+B, Value, M) :- !,
-	ods_eval(A, VA, M),
-	ods_eval(B, VB, M),
+	ods_eval_typed(A, numeric, VA, M),
+	ods_eval_typed(B, numeric, VB, M),
 	Value is VA+VB.
 ods_eval(A-B, Value, M) :- !,
-	ods_eval(A, VA, M),
-	ods_eval(B, VB, M),
+	ods_eval_typed(A, numeric, VA, M),
+	ods_eval_typed(B, numeric, VB, M),
 	Value is VA-VB.
 ods_eval(A*B, Value, M) :- !,
-	ods_eval(A, VA, M),
-	ods_eval(B, VB, M),
+	ods_eval_typed(A, numeric, VA, M),
+	ods_eval_typed(B, numeric, VB, M),
 	Value is VA*VB.
 ods_eval(A/B, Value, M) :- !,
-	ods_eval(A, VA, M),
-	ods_eval(B, VB, M),
+	ods_eval_typed(A, numeric, VA, M),
+	ods_eval_typed(B, numeric, VB, M),
 	Value is VA/VB.
 ods_eval(A=B, Value, M) :- !,
 	ods_eval(A, VA, M),
@@ -674,8 +671,19 @@ ods_eval('%'(A), Value, M) :- !,
 	).
 ods_eval(X, X, _).
 
-ods_evalm(M, Expr, Value) :-
-	ods_eval(Expr, Value, M).
+ods_eval_typed(cell(Sheet, X, Y), Type, Value, M) :- !,
+	cell_value(Sheet,X,Y, Type, Value, M).
+ods_eval_typed(Expr, Type, Value, M) :-
+	ods_eval(Expr, Value0, M),
+	type_convert(Type, Value0, Value).
+
+cell_value(Sheet,X,Y, Type, Value, M) :-
+	(   M:cell(Sheet, X, Y, Value0, _Type, _, _, _)
+	->  type_convert(Type, Value0, Value)
+	;   no_cell(Sheet,X,Y),
+	    type_default(Type, Value0)
+	->  Value = Value0
+	).
 
 
 %%	ods_eval_if_exists(+Cell, -Value, +Module) is semidet.
@@ -701,6 +709,10 @@ eval_function(Expr, Value, M) :-
 	    Value = error(Expr1)
 	).
 
+ods_evalm(M, Expr, Value) :-
+	ods_eval(Expr, Value, M).
+
+%%	eval(+Expr, -Value) is det.
 
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
@@ -717,6 +729,29 @@ eval('RANK'(V, List, Order), Rank) :-
 eval('FALSE', @false).
 eval('TRUE', @true).
 
+%%	type_default(+Type, -Default).
+
+type_default(string, '').
+type_default(numeric, 0).
+
+%%	type_convert(+Type, +V0, -V).
+
+type_convert(numeric, V0, V) :-
+	(   number(V0)
+	->  V = V0
+	;   print_message(warning, ods(convert(numeric, V0))),
+	    atom_number(V0, V)
+	).
+type_convert(string, V0, V) :-
+	(   atom(V0)
+	->  V = V0
+	;   print_message(warning, ods(convert(string, V0))),
+	    atom_number(V, V0)
+	).
+
+
+no_cell(Sheet, X, Y) :-
+	print_message(warning, existence_error(cell, cell(Sheet,X,Y))).
 
 
 		 /*******************************
