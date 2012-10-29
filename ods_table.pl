@@ -28,11 +28,11 @@ ods_DOM(File, DOM, Options) :-
 	    archive_close(Archive)).
 
 archive_dom(Archive, DOM, Options) :-
-	option(member(Member), Options, 'content.xml'),
+	select_option(member(Member), Options, XMLOptions, 'content.xml'),
 	archive_next_header(Archive, Member),
 	setup_call_cleanup(
 	    archive_open_entry(Archive, Stream),
-	    load_structure(Stream, DOM, Options),
+	    load_structure(Stream, DOM, XMLOptions),
 	    close(Stream)).
 
 %%	ods_load(:DOM)
@@ -196,6 +196,8 @@ cell_formula(_, _, -).
 %	the DOM content of the style,   leaving the high-level reasoning
 %	to other predicates. One  advantage  of   this  is  that  we can
 %	re-generate the style info.
+%
+%	@tbd	Styles defined here may refer to styles in =|styles.xml|=.
 
 load_styles(DOM, Module) :-
 	xpath(DOM, //'office:automatic-styles'(self), StylesDOM), !,
