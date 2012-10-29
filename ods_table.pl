@@ -431,7 +431,7 @@ str_code(C) --> [C], { C \== 0'" }.
 
 %%	ods_function_call(Expr0)// is semidet.
 
-ods_function_call(Expr, Table) -->
+ods_function_call(eval(Expr), Table) -->
 	function_name(Name),
 	blanks, "(", parameter_list(Args, Table),
 	{ Expr =.. [Name|Args] }.
@@ -625,9 +625,6 @@ not_in_sheet_name(0'$).
 ods_eval(Module:Expression, Value) :-
 	ods_eval(Expression, Value, Module).
 
-ods_eval(Expr, Value, _) :-
-	number(Expr), !,
-	Value = Expr.
 ods_eval(cell(Sheet, X, Y), Value, M) :- !,
 	(   M:cell(Sheet, X, Y, Value, _Type, _, _, _)
 	->  true
@@ -640,8 +637,7 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	->  findall(V, (between(SX,EX,X), ods_eval(cell(Sheet,X,SY), V, M)), List)
 	;   print_message(warning, ods(eval(cell_range(Sheet, SX,SY, EX,EY))))
 	).
-ods_eval(Expr, Value, M) :-
-	callable(Expr),
+ods_eval(eval(Expr), Value, M) :- !,
 	Expr =.. [Func|ArgExprs],
 	maplist(ods_evalm(M), ArgExprs, Args),
 	Expr1 =.. [Func|Args],
@@ -650,6 +646,7 @@ ods_eval(Expr, Value, M) :-
 	;   print_message(warning, ods(eval(Expr1))),
 	    Value = error(Expr1)
 	).
+ods_eval(X, X, _).
 
 ods_evalm(M, Expr, Value) :-
 	ods_eval(Expr, Value, M).
@@ -667,8 +664,21 @@ eval('%'(A), Value) :-
 	->  Value is A/100.0
 	;   domain_error(percentage, A)
 	).
+eval(A=B, Value) :-
+	(   A == B
+	->  Value = @true
+	;   Value = @false
+	).
+eval('IF'(Cond, Then, Else), Value) :-
+	(   Cond == @true
+	->  Value = Then
+	;   Value = Else
+	).
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
+eval('FALSE', @false).
+eval('TRUE', @true).
+
 
 
 		 /*******************************
