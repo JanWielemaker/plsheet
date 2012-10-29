@@ -13,6 +13,9 @@ dom(Member, DOM) :-
 
 load :-
 	file(File),
+	load(File).
+
+load(File) :-
 	ods_clean,
 	ods_load(File).
 

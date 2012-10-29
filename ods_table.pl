@@ -406,6 +406,8 @@ ods_function_call(Expr, Table) -->
 	blanks, "(", parameter_list(Args, Table),
 	{ Expr =.. [Name|Args] }.
 
+parameter_list([], _) -->
+	")", !.
 parameter_list([H|T], Table) -->
 	expression(H, 1200, _, Table), !, blanks,
 	(   ";"
@@ -443,7 +445,7 @@ letter_xml(C) --> [C], { xml_base(C) ;
 %%	ods_reference(Expr0, Table)
 
 ods_reference(Expr, Table) -->
-	"[", reference(Expr, Table), "]".
+	"[", reference(Expr, Table), "]", !.
 
 reference(ext(IRI, Range), Table) -->
 	"'", !, string(Codes), "'#",
@@ -490,7 +492,7 @@ range_address(Ref, _Table) -->
 	).
 
 sheet_locator_or_empty(Sheet, _) -->
-	sheet_locator(Sheet), !.
+	sheet_locator(Sheet).
 sheet_locator_or_empty(Table, Table) --> "".
 
 sheet_locator(Sheet) -->
@@ -498,7 +500,7 @@ sheet_locator(Sheet) -->
 	subtable_path(Name, Sheet).
 
 subtable_path(Name, Locator) -->
-	".", !,
+	".",
 	subtable_cell(One),
 	{ Path0 = Name/One },
 	subtable_path(Path0, Locator).
@@ -511,7 +513,11 @@ subtable_cell(Sheet) -->
 
 sheet_name(Name) -->
 	( "$" ->  "" ; "" ),
-	single_quoted(Name).
+	(   single_quoted(Name)
+	;   sheet_name_code(C0),
+	    sheet_name_codes(Codes)
+	->  { atom_codes(Name, [C0|Codes]) }
+	).
 
 cell(cell(X,Y)) -->
 	column(X),
@@ -561,6 +567,21 @@ sq_codes([]) -->
 
 sq_code(0'\') --> "''", !.
 sq_code(C) --> [C], { C \== 0'\' }.
+
+sheet_name_codes([H|T]) -->
+	sheet_name_code(H), !,
+	sheet_name_codes(T).
+sheet_name_codes([]) --> "".
+
+sheet_name_code(C) -->
+	[C],
+	{ \+ not_in_sheet_name(C) }.
+
+not_in_sheet_name(0']).
+not_in_sheet_name(0'.).
+not_in_sheet_name(0'\s).
+not_in_sheet_name(0'#).
+not_in_sheet_name(0'$).
 
 
 		 /*******************************
