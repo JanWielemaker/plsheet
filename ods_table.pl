@@ -3,7 +3,8 @@
 	    ods_load/1,			% :DOM
 	    ods_clean/0,
 	    ods_eval/2,			% +Expression, -Value
-	    ods_style_property/2	% :Style, ?Property
+	    ods_style_property/2,	% :Style, ?Property
+	    cell_style/4		% :Sheet, ?X, ?Y, ?Property
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(dcg/basics)).
@@ -11,7 +12,8 @@
 :- meta_predicate
 	ods_load(:),
 	ods_eval(:, -),
-	ods_style_property(:, ?).
+	ods_style_property(:, ?),
+	cell_style(:, ?, ?, ?).
 
 
 %%	ods_DOM(+File -DOM, +Options) is det.
@@ -203,6 +205,8 @@ load_styles(DOM, Module) :-
 %%	ods_style_property(:Style, ?Property) is nondet.
 %
 %	True when Property is a property of Style.
+%
+%	@see http://docs.oasis-open.org/office/v1.2/OpenDocument-v1.2-part1.html
 
 ods_style_property(Module:Style, Property) :-
 	Module:style(Style, DOM),
@@ -233,6 +237,14 @@ convert_size(Atom, Atom) :-
 size_suffix(pt).
 size_suffix(cm).
 size_suffix(mm).
+
+%%	cell_style(:Sheet, ?X, ?Y, ?Style)
+%
+%	True when cell X,Y in Sheet has style property Style
+
+cell_style(Module:Sheet, X, Y, Property) :-
+	Module:cell(Sheet, X, Y, _V, _T, _F, Style, _A),
+	ods_style_property(Style, Property).
 
 
 		 /*******************************
