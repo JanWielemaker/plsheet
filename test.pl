@@ -22,15 +22,15 @@ load(File) :-
 eval(Sheet, X,Y) :-
 	cell(Sheet, X, Y, Value, _Type, Formula, _Style, _Annotation),
 	Formula \== (-),
-	format('Eval cell(~q,~q) ~p~n', [X, Y, Formula]),
+	format('Testing cell(~q,~q,~q) ~p~n', [Sheet,X,Y, Formula]),
 	catch(ods_eval(Formula, OurValue),
 	      E,
 	      ( print_message(error, E),
 		fail)),
 	(   same_values(OurValue, Value)
-	->  format('OK: cell(~w,~w)~n', [X,Y]),
+	->  format('\tOK: cell(~q,~q,~q)~n', [Sheet,X,Y]),
 	    fail
-	;   format('cell(~w,~w) --> ~q [~q]~n', [X, Y, OurValue, Value])
+	;   format('\tWRONG: cell(~q,~q,~q) --> ~q [~q]~n', [Sheet, X, Y, OurValue, Value])
 	).
 
 same_values(X, Y) :-

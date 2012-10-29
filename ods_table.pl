@@ -626,15 +626,19 @@ ods_eval(Module:Expression, Value) :-
 	ods_eval(Expression, Value, Module).
 
 ods_eval(cell(Sheet, X, Y), Value, M) :- !,
-	(   M:cell(Sheet, X, Y, Value, _Type, _, _, _)
-	->  true
+	(   M:cell(Sheet, X, Y, Value0, _Type, _, _, _)
+	->  Value = Value0
 	;   existence_error(cell, cell(Sheet, X, Y))
 	).
 ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	(   SX =:= EX
-	->  findall(V, (between(SY,EY,Y), ods_eval(cell(Sheet,SX,Y), V, M)), List)
+	->  findall(V, (between(SY,EY,Y),
+			ods_eval_if_exists(cell(Sheet,SX,Y), V, M)),
+		    List)
 	;   SY =:= EY
-	->  findall(V, (between(SX,EX,X), ods_eval(cell(Sheet,X,SY), V, M)), List)
+	->  findall(V, (between(SX,EX,X),
+			ods_eval_if_exists(cell(Sheet,X,SY), V, M)),
+		    List)
 	;   print_message(warning, ods(eval(cell_range(Sheet, SX,SY, EX,EY))))
 	).
 ods_eval(eval(Expr), Value, M) :- !,
@@ -646,34 +650,54 @@ ods_eval(eval(Expr), Value, M) :- !,
 	;   print_message(warning, ods(eval(Expr1))),
 	    Value = error(Expr1)
 	).
+ods_eval(A+B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	Value is VA+VB.
+ods_eval(A-B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	Value is VA-VB.
+ods_eval(A*B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	Value is VA*VB.
+ods_eval(A/B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	Value is VA/VB.
+ods_eval(A=B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	(   VA == VB
+	->  Value = @true
+	;   Value = @false
+	).
+ods_eval('%'(A), Value, M) :- !,
+	ods_eval(A, VA, M),
+	(   VA >= 0, VA =< 100
+	->  Value is VA/100.0
+	;   domain_error(percentage, VA)
+	).
+ods_eval('IF'(Cond, Then, Else), Value, M) :- !,
+	ods_eval(Cond, VC, M),
+	(   VC == @true
+	->  ods_eval(Then, Value, M)
+	;   ods_eval(Else, Value, M)
+	).
 ods_eval(X, X, _).
 
 ods_evalm(M, Expr, Value) :-
 	ods_eval(Expr, Value, M).
 
-eval(A-B, Value) :-
-	Value is A-B.
-eval(A+B, Value) :-
-	Value is A+B.
-eval(A*B, Value) :-
-	Value is A*B.
-eval(A/B, Value) :-
-	Value is A/B.
-eval('%'(A), Value) :-
-	(   A >= 0, A =< 100
-	->  Value is A/100.0
-	;   domain_error(percentage, A)
-	).
-eval(A=B, Value) :-
-	(   A == B
-	->  Value = @true
-	;   Value = @false
-	).
-eval('IF'(Cond, Then, Else), Value) :-
-	(   Cond == @true
-	->  Value = Then
-	;   Value = Else
-	).
+
+%%	ods_eval_if_exists(+Cell, -Value, +Module) is semidet.
+%
+%	Extract value for a cell if it exists.  Used for 'SUM'().
+
+ods_eval_if_exists(cell(Sheet,X,Y), Value, M) :-
+	M:cell(Sheet, X, Y, Value, _Type, _, _, _), !.
+
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
 eval('FALSE', @false).
