@@ -107,6 +107,21 @@ load_cell(DOM, State, Module) :-
 	End is X0+Rep-1,
 	(   Content == []
 	->  debug(ods(cell), '~w empty cells', [Rep])
+	;   Content = [Annotation],
+	    xpath(Annotation, /'office:annotation'(self), _)
+	->  (   cell_style(DOM, Style),
+	        cell_annotations(DOM, Annotations)
+	    ->	forall(between(X0, End, X),
+		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
+			 assertz(Module:cell(Table,X,Y,
+					     '',
+					     no_type,
+					     -,
+					     Style,
+					     Annotations))
+		       ))
+	    ;	print_message(warning, ods(convert_failed(cell, DOM)))
+	    )
 	;   (   cell_type(DOM, Type),
 	        cell_style(DOM, Style),
 		cell_value(DOM, Type, Value),
@@ -138,6 +153,9 @@ cell_style(_, default).			% TBD: Use default column style
 cell_value(DOM, Type, Value) :-
 	xpath(DOM, /'table:table-cell'(@'office:value'), OfficeValue), !,
 	convert_value(Type, OfficeValue, Value).
+cell_value(DOM, date, Value) :-
+	xpath(DOM, /'table:table-cell'(@'office:date-value'), OfficeValue), !,
+	convert_date(OfficeValue, Value).
 cell_value(DOM, string, Value) :-
 	findall(T, xpath(DOM, 'text:p'(normalize_space), T), List),
 	atomic_list_concat(List, Value).
@@ -154,6 +172,18 @@ convert_value(percentage, Text, Value) :- !,
 	).
 convert_value(Type, Value, Value) :-
 	print_message(warning, ods(unknown_type(Type))).
+
+convert_date(Text, date(Y,M,D)) :-
+	atom_codes(Text, Codes),
+	phrase(date(Y,M,D), Codes), !.
+convert_date(Text, Text) :-
+	print_message(warning, ods(convert_failed(date, Text))).
+
+date(Y,M,D) -->
+	integer(Y), "-", integer(M), "-", integer(D),
+	{ between(1, 12, M),
+	  between(1, 31, D)
+	}.
 
 %%	cell_annotations(+DOM, -Annotations:list) is det.
 
