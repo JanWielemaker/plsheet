@@ -2,14 +2,17 @@
 	  [ ods_DOM/3,			% +File, -DOM, +Options
 	    ods_load/1,			% :DOM
 	    ods_clean/0,
-	    ods_eval/2			% +Expression, -Value
+	    ods_eval/2,			% +Expression, -Value
+	    ods_style_property/2	% :Style, ?Property
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(dcg/basics)).
 
 :- meta_predicate
 	ods_load(:),
-	ods_eval(:, -).
+	ods_eval(:, -),
+	ods_style_property(:, ?).
+
 
 %%	ods_DOM(+File -DOM, +Options) is det.
 %
@@ -49,8 +52,6 @@ ods_load(Module:File) :-
 	ods_DOM(File, DOM, []),
 	ods_load(Module:DOM).
 
-
-load_styles(_, _).
 
 load_tables(DOM, Module) :-
 	forall(xpath(DOM, //'table:table'(@'table:name'=Name,
@@ -182,6 +183,61 @@ cell_formula(DOM, Table, Formula) :-
 	).
 cell_formula(_, _, -).
 
+
+		 /*******************************
+		 *	      STYLES		*
+		 *******************************/
+
+%%	load_styles(+DOM, +Module) is det.
+%
+%	Load the style information for the  spreadsheet. We simply store
+%	the DOM content of the style,   leaving the high-level reasoning
+%	to other predicates. One  advantage  of   this  is  that  we can
+%	re-generate the style info.
+
+load_styles(DOM, Module) :-
+	xpath(DOM, //'office:automatic-styles'(self), StylesDOM), !,
+	forall(xpath(StylesDOM, 'style:style'(@'style:name' = Name), SDOM),
+	       assertz(Module:style(Name, SDOM))).
+
+%%	ods_style_property(:Style, ?Property) is nondet.
+%
+%	True when Property is a property of Style.
+
+ods_style_property(Module:Style, Property) :-
+	Module:style(Style, DOM),
+	(   nonvar(Property)
+	->  once(style_property(Property, DOM))
+	;   style_property(Property, DOM)
+	).
+
+style_property(font_weight(W), DOM) :-
+	xpath(DOM, 'style:text-properties'(@'fo:font-weight'=W), _).
+style_property(font_name(Name), DOM) :-
+	xpath(DOM, 'style:text-properties'(@'style:font-name'=Name), _).
+style_property(font_size(Size), DOM) :-
+	xpath(DOM, 'style:text-properties'(@'fo:font-size'=Size0), _),
+	convert_size(Size0, Size).
+style_property(column_width(Size), DOM) :-
+	xpath(DOM, 'table-column-properties'(@'style:column-width'=Size0), _),
+	convert_size(Size0, Size).
+
+convert_size(Atom, Term) :-
+	size_suffix(Suffix),
+	atom_concat(NumA, Suffix, Atom),
+	atom_number(NumA, Num), !,
+	Term =.. [Suffix,Num].
+convert_size(Atom, Atom) :-
+	print_message(warning, ods(unknown_size(Atom))).
+
+size_suffix(pt).
+size_suffix(cm).
+size_suffix(mm).
+
+
+		 /*******************************
+		 *	      FORMULAS		*
+		 *******************************/
 
 %%	compile_formula(OfficeFormula, Table, Formula) is det.
 %
