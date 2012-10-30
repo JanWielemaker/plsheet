@@ -4,7 +4,13 @@
 	    ods_clean/0,
 	    ods_eval/2,			% +Expression, -Value
 	    ods_style_property/2,	% :Style, ?Property
-	    cell_style/4		% :Sheet, ?X, ?Y, ?Property
+	    cell_value/4,		% :Sheet, ?X, ?Y, ?Value
+	    cell_type/4,		% :Sheet, ?X, ?Y, ?Type
+	    cell_formula/4,		% :Sheet, ?X, ?Y, ?Formula
+	    cell_eval/4,		% :Sheet, ?X, ?Y, -Value
+	    cell_style/4,		% :Sheet, ?X, ?Y, ?Property
+
+	    column_name/2		% ?Index, ?Name
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(dcg/basics)).
@@ -13,6 +19,10 @@
 	ods_load(:),
 	ods_eval(:, -),
 	ods_style_property(:, ?),
+	cell_value(:, ?, ?, ?),
+	cell_type(:, ?, ?, ?),
+	cell_formula(:, ?, ?, ?),
+	cell_eval(:, ?, ?, ?),
 	cell_style(:, ?, ?, ?).
 
 
@@ -269,15 +279,6 @@ convert_size(Atom, Atom) :-
 size_suffix(pt).
 size_suffix(cm).
 size_suffix(mm).
-
-%%	cell_style(:Sheet, ?X, ?Y, ?Style)
-%
-%	True when cell X,Y in Sheet has style property Style
-
-cell_style(Module:Sheet, X, Y, Property) :-
-	Module:cell(Sheet, X, Y, _V, _T, _F, Style, _A),
-	ods_style_property(Style, Property).
-
 
 		 /*******************************
 		 *	      FORMULAS		*
@@ -559,13 +560,12 @@ cell(X, Y) -->
 
 column(Col) -->
 	( "$" ->  "" ; "" ),
-	coln(0, Col0),
-	{ Col is Col0+1 }.
+	coln(0, Col).
 
 coln(C0, C) -->
 	[D],
 	{ between(0'A, 0'Z, D), !,
-	  C1 is C0*26+D-0'A
+	  C1 is C0*26+D-0'A+1
 	},
 	coln(C1, C).
 coln(C, C) --> "".
@@ -612,6 +612,63 @@ not_in_sheet_name(0'.).
 not_in_sheet_name(0'\s).
 not_in_sheet_name(0'#).
 not_in_sheet_name(0'$).
+
+
+		 /*******************************
+		 *	 CELL PROPERTIES	*
+		 *******************************/
+
+%%	cell_value(:Sheet, ?X, ?Y, ?Value)
+%
+%	True when cell X,Y in Sheet has Value.
+
+cell_value(Module:Sheet, X, Y, Value) :-
+	(   ground(cell(Sheet,X,Y))
+	->  once(Module:cell(Sheet, X, Y, Value, _, _, _, _))
+	;   Module:cell(Sheet, X, Y, Value, _, _, _, _)
+	).
+
+%%	cell_type(:Sheet, ?X, ?Y, ?Type)
+%
+%	True when cell X,Y in Sheet has Type.
+
+cell_type(Module:Sheet, X, Y, Type) :-
+	(   ground(cell(Sheet,X,Y))
+	->  once(Module:cell(Sheet, X, Y, _, Type, _, _, _))
+	;   Module:cell(Sheet, X, Y, _, Type, _, _, _)
+	).
+
+%%	cell_formula(:Sheet, ?X, ?Y, ?Formula)
+%
+%	True when cell X,Y in Sheet has Formula.
+
+cell_formula(Module:Sheet, X, Y, Formula) :-
+	(   ground(cell(Sheet,X,Y))
+	->  once(Module:cell(Sheet, X, Y, _, _, Formula, _, _))
+	;   Module:cell(Sheet, X, Y, _, _, Formula, _, _)
+	),
+	Formula \== (-).
+
+%%	cell_eval(:Sheet, ?X, ?Y, ?Value)
+%
+%	True when the formula of cell X,Y in Sheet evaluates to Value
+
+cell_eval(Sheet, X, Y, Value) :-
+	cell_formula(Sheet, X, Y, Formula),
+	cell_type(Sheet, X, Y, Type),
+	Sheet = Module:_,
+	ods_eval_typed(Formula, Type, Value, Module).
+
+%%	cell_style(:Sheet, ?X, ?Y, ?Style)
+%
+%	True when cell X,Y in Sheet has style property Style
+
+cell_style(Module:Sheet, X, Y, Property) :-
+	(   ground(cell(Sheet,X,Y))
+	->  once(Module:cell(Sheet, X, Y, _, _, _, Style, _))
+	;   Module:cell(Sheet, X, Y, _, _, _, Style, _)
+	),
+	ods_style_property(Style, Property).
 
 
 		 /*******************************
@@ -736,11 +793,27 @@ type_default(numeric, 0).
 
 %%	type_convert(+Type, +V0, -V).
 
+type_convert(Type, V0, V) :-
+	var(Type), !,
+	V = V0.
 type_convert(numeric, V0, V) :-
 	(   number(V0)
 	->  V = V0
 	;   print_message(warning, ods(convert(numeric, V0))),
-	    atom_number(V0, V)
+	    (	V0 == ''
+	    ->	V = 0.0
+	    ;	atom_number(V0, V)
+	    )
+	).
+type_convert(float, V0, V) :-
+	(   number(V0)
+	->  V is float(V0)
+	;   print_message(warning, ods(convert(numeric, V0))),
+	    (	V0 == ''
+	    ->	V = 0.0
+	    ;	atom_number(V0, V1),
+		V is float(V1)
+	    )
 	).
 type_convert(string, V0, V) :-
 	(   atom(V0)
@@ -1076,6 +1149,35 @@ xml_digit(C) :- between(0x0D66, 0x0D6F, C).
 xml_digit(C) :- between(0x0E50, 0x0E59, C).
 xml_digit(C) :- between(0x0ED0, 0x0ED9, C).
 xml_digit(C) :- between(0x0F20, 0x0F29, C).
+
+
+		 /*******************************
+		 *	       UTIL		*
+		 *******************************/
+
+
+%%	column_name(?Index, ?Name) is det.
+%
+%	Name is the alplanumerical name of column  Col. Column 1 is 'A',
+%	26 = 'Z', 27 = 'AA'.
+
+column_name(N, Col) :-
+	integer(N), !,
+	col_chars(N, Chars, []),
+	atom_codes(Col, Chars).
+column_name(N, Col) :-
+	atom_codes(Col, Codes),
+	phrase(column(N), Codes).
+
+
+col_chars(Col, [C|T], T) :-
+	Col =< 26, !,
+	C is Col+0'A-1.
+col_chars(Col, List, T) :-
+	High is Col//26,
+	Last is (Col mod 26) + 0'A - 1,
+	col_chars(High, List, [Last|T]).
+
 
 
 		 /*******************************
