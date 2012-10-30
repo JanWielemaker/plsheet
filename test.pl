@@ -23,11 +23,20 @@ test(Sheet, X,Y) :-
 	test(Sheet, X,Y, fail).
 
 test(Sheet, X,Y, Cont) :-
-	forall(cell_formula(Sheet,X,Y,Formula),
-	       (   verify(Sheet,X,Y,Formula)
-	       ->  true
-	       ;   Cont
-	       )).
+	State = state(0,_),
+	(   forall(cell_formula(Sheet,X,Y,Formula),
+		   (   verify(Sheet,X,Y,Formula)
+		   ->  arg(1, State, P0),
+		       P is P0+1,
+		       nb_setarg(1, State, P)
+		   ;   Cont
+		   ))
+	->  true
+	;   arg(1, State, Passed),
+	    format('Passed: ~D~n', [Passed]),
+	    fail
+	).
+
 
 verify(Sheet,X,Y,Formula) :-
 	cell_value(Sheet, X, Y, Value),

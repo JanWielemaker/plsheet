@@ -714,25 +714,53 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 ods_eval(eval(Expr), Value, M) :- !,
 	eval_function(Expr, Value, M).
 ods_eval(A+B, Value, M) :- !,
-	ods_eval_typed(A, numeric, VA, M),
-	ods_eval_typed(B, numeric, VB, M),
+	ods_eval_typed(A, number, VA, M),
+	ods_eval_typed(B, number, VB, M),
 	Value is VA+VB.
 ods_eval(A-B, Value, M) :- !,
-	ods_eval_typed(A, numeric, VA, M),
-	ods_eval_typed(B, numeric, VB, M),
+	ods_eval_typed(A, number, VA, M),
+	ods_eval_typed(B, number, VB, M),
 	Value is VA-VB.
 ods_eval(A*B, Value, M) :- !,
-	ods_eval_typed(A, numeric, VA, M),
-	ods_eval_typed(B, numeric, VB, M),
+	ods_eval_typed(A, number, VA, M),
+	ods_eval_typed(B, number, VB, M),
 	Value is VA*VB.
 ods_eval(A/B, Value, M) :- !,
-	ods_eval_typed(A, numeric, VA, M),
-	ods_eval_typed(B, numeric, VB, M),
+	ods_eval_typed(A, number, VA, M),
+	ods_eval_typed(B, number, VB, M),
 	Value is VA/VB.
 ods_eval(A=B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
 	(   VA == VB
+	->  Value = @true
+	;   Value = @false
+	).
+ods_eval(A>B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	(   VA > VB
+	->  Value = @true
+	;   Value = @false
+	).
+ods_eval(A>=B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	(   VA >= VB
+	->  Value = @true
+	;   Value = @false
+	).
+ods_eval(A<B, Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	(   VA < VB
+	->  Value = @true
+	;   Value = @false
+	).
+ods_eval('<='(A,B), Value, M) :- !,
+	ods_eval(A, VA, M),
+	ods_eval(B, VB, M),
+	(   VA =< VB
 	->  Value = @true
 	;   Value = @false
 	).
@@ -844,17 +872,18 @@ eval_varargs('MIN', List, Value) :-
 %%	type_default(+Type, -Default).
 
 type_default(string, '').
-type_default(numeric, 0).
+type_default(number, 0).
+type_default(float, 0.0).
 
 %%	type_convert(+Type, +V0, -V).
 
 type_convert(Type, V0, V) :-
 	var(Type), !,
 	V = V0.
-type_convert(numeric, V0, V) :-
+type_convert(number, V0, V) :-
 	(   number(V0)
 	->  V = V0
-	;   print_message(warning, ods(convert(numeric, V0))),
+	;   print_message(warning, ods(convert(number, V0))),
 	    (	V0 == ''
 	    ->	V = 0.0
 	    ;	atom_number(V0, V)
@@ -863,7 +892,7 @@ type_convert(numeric, V0, V) :-
 type_convert(float, V0, V) :-
 	(   number(V0)
 	->  V is float(V0)
-	;   print_message(warning, ods(convert(numeric, V0))),
+	;   print_message(warning, ods(convert(number, V0))),
 	    (	V0 == ''
 	    ->	V = 0.0
 	    ;	atom_number(V0, V1),
