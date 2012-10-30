@@ -153,7 +153,7 @@ load_cell(DOM, State, Module) :-
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
 			 cell_id(X,Y,Id),
 			 assertz(Module:cell(Table,Id,
-					     '',
+					     @empty,
 					     no_type,
 					     -,
 					     Style,
@@ -839,6 +839,16 @@ eval_function('VLOOKUP'(VExpr, DataSource, Column, Sorted), Value, M) :-
 		Value = #('N/A')
 	    )
 	;   print_message(error, ods(vlookup, sorted))
+	).
+eval_function('ISBLANK'(Expr), Value, M) :-
+	(   Expr = cell(Sheet,X,Y)
+	->  cell_id(X,Y,Id),
+	    (	M:cell(Sheet, Id, CellValue, _Type, _, _, _),
+		CellValue \== @empty
+	    ->	Value = @false
+	    ;	Value = @true
+	    )
+	;   Value = @false
 	).
 eval_function(Expr, Value, M) :-
 	Expr =.. [Func|ArgExprs],
