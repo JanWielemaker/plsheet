@@ -958,6 +958,17 @@ eval('PMT'(Rate, Nper, Pv, Fv), Value) :-
 	pmt(Rate, Nper, Pv, Fv, 0, Value).
 eval('PMT'(Rate, Nper, Pv), Value) :-
 	pmt(Rate, Nper, Pv, 0, 0, Value).
+eval('ROUNDDOWN'(Float), Value) :-
+	Value is truncate(Float).
+eval('ROUNDDOWN'(Float, Digits), Value) :-
+	(   Digits =:= 0
+	->  Value is truncate(Float)
+	;   Digits > 0
+	->  Mult is 10^integer(Digits),
+	    Value is truncate(Float*Mult)/Mult
+	;   Div is 10^(-integer(Digits)),
+	    Value is truncate(Float/Div)*Div
+	).
 eval('FALSE', @false).
 eval('TRUE', @true).
 
