@@ -736,31 +736,31 @@ ods_eval(A=B, Value, M) :- !,
 	->  Value = @true
 	;   Value = @false
 	).
-ods_eval(A>B, Value, M) :- !,
-	ods_eval(A, VA, M),
+ods_eval(A>B, Value, M) :- !,		% compare numbers, text, boolean
+	ods_eval(A, VA, M),		% different types: undefined.
 	ods_eval(B, VB, M),
-	(   VA > VB
+	(   VA @> VB
 	->  Value = @true
 	;   Value = @false
 	).
 ods_eval(A>=B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
-	(   VA >= VB
+	(   VA @>= VB
 	->  Value = @true
 	;   Value = @false
 	).
 ods_eval(A<B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
-	(   VA < VB
+	(   VA @< VB
 	->  Value = @true
 	;   Value = @false
 	).
 ods_eval('<='(A,B), Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
-	(   VA =< VB
+	(   VA @=< VB
 	->  Value = @true
 	;   Value = @false
 	).
