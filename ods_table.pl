@@ -548,9 +548,11 @@ fixup_reference(IRI0, IRI) :-
 	;   file_base_name(File, Base),
 	    file_name_extension(Plain, _, Base),
 	    file_name_extension(Plain, ods, Local),
-	    access_file(Local, read),
-	    uri_file_name(IRI, Local),
+	    access_file(Local, read)
+	->  uri_file_name(IRI, Local),
 	    print_message(informational, ods(updated_ext(IRI0, IRI)))
+	;   print_message(warning, ods(no_ext(IRI0))),
+	    IRI = IRI0
 	),
 	assertz(fixed_up(IRI0, IRI)).
 
@@ -1445,3 +1447,5 @@ message(updated_ext(IRI0, IRI)) -->
 	[ 'Updated external reference:'-[], nl,
 	  '   ~w --> ~w'-[IRI0, IRI]
 	].
+message(no_ext(IRI)) -->
+	[ 'Missing external reference: ~q'-[IRI] ].
