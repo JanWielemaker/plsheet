@@ -848,6 +848,8 @@ eval_function('ISBLANK'(Expr), Value, M) :-
 	    ->	Value = @false
 	    ;	Value = @true
 	    )
+	;   Expr = #('REF!')		% Error reference
+	->  Value = @true
 	;   Value = @false
 	).
 eval_function(Expr, Value, M) :-
