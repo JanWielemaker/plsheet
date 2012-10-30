@@ -15,6 +15,7 @@
 :- use_module(library(xpath)).
 :- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
+:- set_prolog_flag(optimise, true).
 
 :- meta_predicate
 	ods_load(:),
@@ -54,7 +55,7 @@ archive_dom(Archive, DOM, Options) :-
 %	    - table(Name, Style)
 %	    - col(Table, X, Style)
 %	    - row(Table, Y, Style)
-%	    - cell(Table, X, Y, Value, Type, Formula, Style, Annotation)
+%	    - cell(Table, ID, Value, Type, Formula, Style, Annotation)
 %	    - style(Style, Properties)
 
 ods_load(Module:DOM) :-
@@ -65,6 +66,17 @@ ods_load(Module:File) :-
 	ods_DOM(File, DOM, []),
 	ods_load(Module:DOM).
 
+
+%%	cell_id(+X, +Y, -ID) is det.
+%%	cell_id(-X, -Y, +ID) is det.
+
+cell_id(X, Y, ID) :-
+	nonvar(X), nonvar(Y), !,
+	ID is Y*1024+X.
+cell_id(X, Y, ID) :-
+	nonvar(ID), !,
+	Y is ID//1024,
+	X is ID mod 1024.
 
 load_tables(DOM, Module) :-
 	forall(xpath(DOM, //'table:table'(@'table:name'=Name,
@@ -139,7 +151,8 @@ load_cell(DOM, State, Module) :-
 	        cell_annotations(DOM, Annotations)
 	    ->	forall(between(X0, End, X),
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
-			 assertz(Module:cell(Table,X,Y,
+			 cell_id(X,Y,Id),
+			 assertz(Module:cell(Table,Id,
 					     '',
 					     no_type,
 					     -,
@@ -155,7 +168,8 @@ load_cell(DOM, State, Module) :-
 		cell_annotations(DOM, Annotations)
 	    ->  forall(between(X0, End, X),
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
-			 assertz(Module:cell(Table,X,Y,
+			 cell_id(X,Y,Id),
+			 assertz(Module:cell(Table,Id,
 					     Value,
 					     Type,
 					     Formula,
@@ -640,8 +654,10 @@ not_in_sheet_name(0'$).
 
 cell_value(Module:Sheet, X, Y, Value) :-
 	(   ground(cell(Sheet,X,Y))
-	->  once(Module:cell(Sheet, X, Y, Value, _, _, _, _))
-	;   Module:cell(Sheet, X, Y, Value, _, _, _, _)
+	->  cell_id(X,Y,Id),
+	    once(Module:cell(Sheet, Id, Value, _, _, _, _))
+	;   Module:cell(Sheet, Id, Value, _, _, _, _),
+	    cell_id(X,Y,Id)
 	).
 
 %%	cell_type(:Sheet, ?X, ?Y, ?Type)
@@ -650,8 +666,10 @@ cell_value(Module:Sheet, X, Y, Value) :-
 
 cell_type(Module:Sheet, X, Y, Type) :-
 	(   ground(cell(Sheet,X,Y))
-	->  once(Module:cell(Sheet, X, Y, _, Type, _, _, _))
-	;   Module:cell(Sheet, X, Y, _, Type, _, _, _)
+	->  cell_id(X,Y,Id),
+	    once(Module:cell(Sheet, Id, _, Type, _, _, _))
+	;   Module:cell(Sheet, Id, _, Type, _, _, _),
+	    cell_id(X,Y,Id)
 	).
 
 %%	cell_formula(:Sheet, ?X, ?Y, ?Formula)
@@ -660,8 +678,10 @@ cell_type(Module:Sheet, X, Y, Type) :-
 
 cell_formula(Module:Sheet, X, Y, Formula) :-
 	(   ground(cell(Sheet,X,Y))
-	->  once(Module:cell(Sheet, X, Y, _, _, Formula, _, _))
-	;   Module:cell(Sheet, X, Y, _, _, Formula, _, _)
+	->  cell_id(X,Y,Id),
+	    once(Module:cell(Sheet, Id, _, _, Formula, _, _))
+	;   Module:cell(Sheet, Id, _, _, Formula, _, _),
+	    cell_id(X,Y,Id)
 	),
 	Formula \== (-).
 
@@ -681,8 +701,10 @@ cell_eval(Sheet, X, Y, Value) :-
 
 cell_style(Module:Sheet, X, Y, Property) :-
 	(   ground(cell(Sheet,X,Y))
-	->  once(Module:cell(Sheet, X, Y, _, _, _, Style, _))
-	;   Module:cell(Sheet, X, Y, _, _, _, Style, _)
+	->  cell_id(X,Y,Id),
+	    once(Module:cell(Sheet, Id, _, _, _, Style, _))
+	;   Module:cell(Sheet, Id, _, _, _, Style, _),
+	    cell_id(X,Y,Id)
 	),
 	ods_style_property(Style, Property).
 
@@ -779,7 +801,8 @@ ods_eval_typed(Expr, Type, Value, M) :-
 	type_convert(Type, Value0, Value).
 
 cell_value(Sheet,X,Y, Type, Value, M) :-
-	(   M:cell(Sheet, X, Y, Value0, _Type, _, _, _)
+	(   cell_id(X,Y,Id),
+	    M:cell(Sheet, Id, Value0, _Type, _, _, _)
 	->  type_convert(Type, Value0, Value)
 	;   no_cell(Sheet,X,Y),
 	    type_default(Type, Value0)
@@ -792,7 +815,8 @@ cell_value(Sheet,X,Y, Type, Value, M) :-
 %	Extract value for a cell if it exists.  Used for 'SUM'().
 
 ods_eval_if_exists(cell(Sheet,X,Y), Value, M) :-
-	M:cell(Sheet, X, Y, Value, _Type, _, _, _), !.
+	cell_id(X,Y,Id),
+	M:cell(Sheet, Id, Value, _Type, _, _, _), !.
 
 eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	ods_eval(Cond, VC, M),
@@ -1280,5 +1304,5 @@ ods_clean :-
 	retractall(M:table(_,_)),
 	retractall(M:col(_,_,_)),
 	retractall(M:row(_,_,_)),
-	retractall(M:cell(_,_,_,_,_,_,_,_)),
+	retractall(M:cell(_,_,_,_,_,_,_)),
 	retractall(M:style(_,_)).
