@@ -937,6 +937,13 @@ ods_evalm(M, Expr, Value) :-
 
 eval('SUM'(List), Value) :-
 	sum_list(List, Value).
+eval('AVERAGE'(List), Value) :-
+	length(List, Len),
+	(   Len > 0
+	->  sum_list(List, Sum),
+	    Value is Sum/Len
+	;   Value = #('N/A')
+	).
 eval('RANK'(V, List), Rank) :-
 	msort(List, Sorted),
 	reverse(Sorted, Descending),
