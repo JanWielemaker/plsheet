@@ -27,6 +27,8 @@
 	cell_eval(:, ?, ?, ?),
 	cell_style(:, ?, ?, ?).
 
+:- dynamic
+	ods_spreadsheet/2.		% URL, Module
 
 %%	ods_DOM(+File -DOM, +Options) is det.
 %
@@ -64,7 +66,21 @@ ods_load(Module:DOM) :-
 	load_tables(DOM, Module).
 ods_load(Module:File) :-
 	ods_DOM(File, DOM, []),
-	ods_load(Module:DOM).
+	ods_load(Module:DOM),
+	uri_file_name(URI, File),
+	retractall(ods_spreadsheet(URI, _)),
+	assertz(ods_spreadsheet(URI, Module)).
+
+%%	ods_ensure_loaded(+URL, -Module)
+%
+%	True when the spreadsheet in URL is loaded into Module.
+
+ods_ensure_loaded(URI, Module) :-
+	ods_spreadsheet(URI, Module), !.
+ods_ensure_loaded(URI, Module) :-
+	uri_file_name(URI, File),
+	ods_load(URI:File),
+	Module = URI.
 
 
 %%	cell_id(+X, +Y, -ID) is det.
@@ -510,12 +526,37 @@ ods_reference(Expr, Table) -->
 
 reference(ext(IRI, Range), Table) -->
 	"'", !, string(Codes), "'#",
-	{ atom_codes(IRI, Codes) },
+	{ atom_codes(IRI0, Codes),
+	  fixup_reference(IRI0, IRI)
+	},
 	range_address(Range, Table).
 reference(Range, Table) -->
 	range_address(Range, Table).
 reference(#('REF!'), _) -->
 	"#REF!".
+
+:- dynamic
+	fixed_up/2.
+
+fixup_reference(IRI0, IRI) :-
+	fixed_up(IRI0, IRI), !.
+fixup_reference(IRI0, IRI) :-
+	uri_file_name(IRI0, File),
+	(   access_file(File, read)
+	->  IRI = IRI0
+	;   file_base_name(File, Base),
+	    file_name_extension(Plain, _, Base),
+	    file_name_extension(Plain, ods, Local),
+	    access_file(Local, read),
+	    uri_file_name(IRI, Local),
+	    print_message(informational, ods(updated_ext(IRI0, IRI)))
+	),
+	assertz(fixed_up(IRI0, IRI)).
+
+clean_fixup :-
+	retractall(fixed_up(_,_)).
+
+%%	range_address(-Ref, +DefaultTable)
 
 range_address(Ref, Table) -->
 	sheet_locator_or_empty(Sheet, Table),
@@ -733,6 +774,9 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 		    List)
 	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY)))
 	).
+ods_eval(ext(URL, Ref), Value, _Module) :- !,
+	ods_ensure_loaded(URL, MExt),
+	ods_eval(Ref, Value, MExt).
 ods_eval(eval(Expr), Value, M) :- !,
 	eval_function(Expr, Value, M).
 ods_eval(A+B, Value, M) :- !,
@@ -1339,6 +1383,7 @@ col_chars(Col, List, T) :-
 
 ods_clean :-
 	context_module(M),
+	clean_fixup,
 	retractall(M:table(_,_)),
 	retractall(M:col(_,_,_)),
 	retractall(M:row(_,_,_)),
@@ -1359,3 +1404,14 @@ ods_warning(Term) :-
 	->  print_message(warning, ods(Term))
 	;   true
 	).
+
+:- multifile
+	prolog:message//1.
+
+prolog:message(ods(Msg)) -->
+	message(Msg).
+
+message(updated_ext(IRI0, IRI)) -->
+	[ 'Updated external reference:'-[], nl,
+	  '   ~w --> ~w'-[IRI0, IRI]
+	].

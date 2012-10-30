@@ -110,7 +110,8 @@ same_values(X, Y) :-
 
 p(X,Y) :-
 	sheet(Sheet),
-	cell(Sheet, X, Y, Value, Type, Formula, Style, _Annotation),
+	cell(Sheet, Id, Value, Type, Formula, Style, _Annotation),
+	ods_table:cell_id(X, Y, Id),
 	format('Value = ~q, Type = ~q, Formula = ~q, Style = ~q',
 	       [ Value, Type, Formula, Style] ).
 
