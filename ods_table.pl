@@ -15,6 +15,7 @@
 :- use_module(library(xpath)).
 :- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
+:- use_module(finance).
 :- set_prolog_flag(optimise, true).
 
 :- meta_predicate
@@ -795,6 +796,11 @@ ods_eval(A/B, Value, M) :- !,
 	ods_eval_typed(A, number, VA, M),
 	ods_eval_typed(B, number, VB, M),
 	Value is VA/VB.
+ods_eval(-A, Value, M) :- !,
+	ods_eval_typed(A, number, VA, M),
+	Value is -VA.
+ods_eval(+A, Value, M) :- !,
+	ods_eval_typed(A, number, Value, M).
 ods_eval(A=B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
@@ -946,6 +952,12 @@ eval('ISERROR'(T), True) :-
 	->  True = @true
 	;   True = @false
 	).
+eval('PMT'(Rate, Nper, Pv, Fv, PayType), Value) :-
+	pmt(Rate, Nper, Pv, Fv, PayType, Value).
+eval('PMT'(Rate, Nper, Pv, Fv), Value) :-
+	pmt(Rate, Nper, Pv, Fv, 0, Value).
+eval('PMT'(Rate, Nper, Pv), Value) :-
+	pmt(Rate, Nper, Pv, 0, 0, Value).
 eval('FALSE', @false).
 eval('TRUE', @true).
 
