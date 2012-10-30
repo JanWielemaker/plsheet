@@ -13,6 +13,7 @@
 	    column_name/2		% ?Index, ?Name
 	  ]).
 :- use_module(library(xpath)).
+:- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
 
 :- meta_predicate
@@ -93,16 +94,31 @@ load_column(element(_, CollAttrs, []), Style, State, Module) :-
 	nb_setarg(1, State, NextX).
 
 load_row(DOM, Style, State, Module) :-
-	DOM = element(_, _RowAttrs, _),
+	DOM = element(_, RowAttrs, _),
 	nb_setarg(1, State, 1),
-	arg(2, State, Y),
+	arg(2, State, Y0),
 	arg(3, State, Table),
-	assertz(Module:row(Table, Y, Style)),
-	debug(ods(row), 'Processing row ~q', [Y]),
-	forall(xpath(DOM, 'table:table-cell'(self), Cell),
-	       load_cell(Cell, State, Module)),
-	NextY is Y + 1,
+	(   memberchk('table:number-rows-repeated'=RepA, RowAttrs),
+	    atom_number(RepA, Rep)
+	->  true
+	;   Rep = 1
+	),
+	End is Y0+Rep-1,
+	(   nonempty_row(DOM)
+	->  forall(between(Y0, End, Y),
+		   ( assertz(Module:row(Table, Y, Style)),
+		     debug(ods(row), 'Processing row ~q', [Y]),
+		     forall(xpath(DOM, 'table:table-cell'(self), Cell),
+			    load_cell(Cell, State, Module))
+		   ))
+	;   true
+	),
+	NextY is End + 1,
 	nb_setarg(2, State, NextY).
+
+nonempty_row(DOM) :-
+	xpath(DOM, 'table:table-cell'(content), Content),
+	Content \== [].
 
 load_cell(DOM, State, Module) :-
 	DOM = element(_, CellAttrs, Content),
@@ -775,11 +791,14 @@ eval_function('VLOOKUP'(VExpr, DataSource, Column, Sorted), Value, M) :-
 eval_function(Expr, Value, M) :-
 	Expr =.. [Func|ArgExprs],
 	maplist(ods_evalm(M), ArgExprs, Args),
-	Expr1 =.. [Func|Args],
-	(   eval(Expr1, Value)
+	(   eval_varargs(Func, Args, Value)
 	->  true
-	;   print_message(warning, ods(eval(Expr1))),
-	    Value = error(Expr1)
+	;   Expr1 =.. [Func|Args],
+	    (   eval(Expr1, Value)
+	    ->  true
+	    ;   print_message(warning, ods(eval(Expr1))),
+		Value = error(Expr1)
+	    )
 	).
 
 ods_evalm(M, Expr, Value) :-
@@ -806,6 +825,21 @@ eval('ISERROR'(T), True) :-
 	).
 eval('FALSE', @false).
 eval('TRUE', @true).
+
+%%	eval_varargs(+Func, +Args, -Value) is semidet.
+
+eval_varargs('MAX', List, Value) :-
+	(   List \== []
+	->  include(number, List, Numbers),
+	    max_list(Numbers, Value)
+	;   Value = 0
+	).
+eval_varargs('MIN', List, Value) :-
+	(   List \== []
+	->  include(number, List, Numbers),
+	    min_list(Numbers, Value)
+	;   Value = 0
+	).
 
 %%	type_default(+Type, -Default).
 
