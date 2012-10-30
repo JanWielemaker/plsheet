@@ -1,4 +1,5 @@
 :- use_module(ods_table).
+:- use_module(library(debug)).
 
 file('E-Design WindEnergie.ods').
 sheet('WindopLand').
@@ -22,41 +23,70 @@ load(File) :-
 test(Sheet, X,Y) :-
 	test(Sheet, X,Y, fail).
 
+:- dynamic
+	passed/3,
+	failed/4.
+
 test(Sheet, X,Y, Cont) :-
-	State = state(0,_),
+	clean_stats,
+	State = state(0),
 	(   forall(cell_formula(Sheet,X,Y,Formula),
-		   (   verify(Sheet,X,Y,Formula)
-		   ->  arg(1, State, P0),
-		       P is P0+1,
-		       nb_setarg(1, State, P)
-		   ;   Cont
+		   ( (   verify(Sheet,X,Y,Formula)
+		     ->  assertz(passed(Sheet,X,Y))
+		     ;   Cont
+		     ),
+		     step(State)
 		   ))
-	->  true
-	;   arg(1, State, Passed),
-	    format('Passed: ~D~n', [Passed]),
+	->  stats
+	;   stats,
 	    fail
 	).
+
+step(State) :-
+	arg(1, State, T0),
+	T is T0 + 1,
+	nb_setarg(1, State, T),
+	(   T mod 1000 =:= 0
+	->  format(user_error, '\r~t~D~20|', [T])
+	;   true
+	).
+
+clean_stats :-
+	retractall(passed(_,_,_)),
+	retractall(failed(_,_,_,_)).
+
+stats :-
+	predicate_property(passed(_,_,_), number_of_clauses(Passed)),
+	predicate_property(failed(_,_,_,_), number_of_clauses(Failed)),
+	format('~NPassed: ~D, failed: ~D~n', [Passed,Failed]).
 
 
 verify(Sheet,X,Y,Formula) :-
 	cell_value(Sheet, X, Y, Value),
-	format('Testing test(~q,~q,~q) ~p [OK: ~q]~n',
-	       [Sheet,X,Y, Formula, Value]),
+	debug(ods(test),
+	      'Testing test(~q,~q,~q) ~p [OK: ~q]~n',
+	      [Sheet,X,Y, Formula, Value]),
 	(   catch(cell_eval(Sheet, X, Y, OurValue),
 		  E,
 		  ( message_to_string(E, Msg),
-		    format('\tERROR: ~p [OK: ~q]: ~w~n',
+		    assertz(failed(Sheet,X,Y,error(E, Msg))),
+		    debug(ods(test(error)),
+			  '\tERROR: ~p [OK: ~q]: ~w~n',
 			   [cell(Sheet,X,Y), Value, Msg])
 		  ))
 	->  var(E),
 	    (	same_values(OurValue, Value)
-	    ->  format('\tOK: ~p~n', [cell(Sheet,X,Y)])
-	    ;   format('\tWRONG: ~p --> ~q [OK: ~q]~n',
-		       [cell(Sheet,X,Y), OurValue, Value]),
+	    ->  debug(ods(test(ok)), '\tOK: ~p~n', [cell(Sheet,X,Y)])
+	    ;   assertz(failed(Sheet,X,Y,wrong(OurValue,Value))),
+	        debug(ods(test(wrong)),
+		      '\tWRONG: ~p --> ~q [OK: ~q]~n',
+		      [cell(Sheet,X,Y), OurValue, Value]),
 		fail
 	    )
-	;   format('\tFAILED: ~p [OK: ~q]~n',
-		   [cell(Sheet,X,Y), Value]),
+	;   assertz(failed(Sheet,X,Y,failed)),
+	    debug(ods(test(failed)),
+		  '\tFAILED: ~p [OK: ~q]~n',
+		  [cell(Sheet,X,Y), Value]),
 	    fail
 	).
 

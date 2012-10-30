@@ -159,7 +159,7 @@ load_cell(DOM, State, Module) :-
 					     Style,
 					     Annotations))
 		       ))
-	    ;	print_message(warning, ods(convert_failed(cell, DOM)))
+	    ;	ods_warning(convert_failed(cell, DOM))
 	    )
 	;   (   cell_type(DOM, Type),
 	        cell_style(DOM, Style),
@@ -176,7 +176,7 @@ load_cell(DOM, State, Module) :-
 					     Style,
 					     Annotations))
 		       ))
-	    ;	print_message(warning, ods(convert_failed(cell, DOM)))
+	    ;	ods_warning(convert_failed(cell, DOM))
 	    )
 	),
 	NextX is End+1,
@@ -211,13 +211,13 @@ convert_value(percentage, Text, Value) :- !,
 	;   type_error(percentage, Text)
 	).
 convert_value(Type, Value, Value) :-
-	print_message(warning, ods(unknown_type(Type))).
+	ods_warning(unknown_type(Type)).
 
 convert_date(Text, date(Y,M,D)) :-
 	atom_codes(Text, Codes),
 	phrase(date(Y,M,D), Codes), !.
 convert_date(Text, Text) :-
-	print_message(warning, ods(convert_failed(date, Text))).
+	ods_warning(convert_failed(date, Text)).
 
 date(Y,M,D) -->
 	integer(Y), "-", integer(M), "-", integer(D),
@@ -234,7 +234,7 @@ cell_annotation(DOM, Term) :-
 	xpath(DOM, 'office:annotation'(self), Annotation),
 	(   convert_annotation(Annotation, Term)
 	->  true
-	;   print_message(warning, ods(convert_failed(annotation, DOM)))
+	;   ods_warning(convert_failed(annotation, DOM))
 	).
 
 convert_annotation(DOM, annotation(Date, Author, Text)) :-
@@ -250,7 +250,7 @@ cell_formula(DOM, Table, Formula) :-
 	xpath(DOM, /'table:table-cell'(@'table:formula'), OfficeFormula), !,
 	(   compile_formula(OfficeFormula, Table, Formula)
 	->  true
-	;   print_message(warning, ods(convert_failed(formula, OfficeFormula))),
+	;   ods_warning(convert_failed(formula, OfficeFormula)),
 	    Formula = OfficeFormula
 	).
 cell_formula(_, _, -).
@@ -304,7 +304,7 @@ convert_size(Atom, Term) :-
 	atom_number(NumA, Num), !,
 	Term =.. [Suffix,Num].
 convert_size(Atom, Atom) :-
-	print_message(warning, ods(unknown_size(Atom))).
+	ods_warning(unknown_size(Atom)).
 
 size_suffix(pt).
 size_suffix(cm).
@@ -731,7 +731,7 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	->  findall(V, (between(SX,EX,X),
 			ods_eval_if_exists(cell(Sheet,X,SY), V, M)),
 		    List)
-	;   print_message(warning, ods(eval(cell_range(Sheet, SX,SY, EX,EY))))
+	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY)))
 	).
 ods_eval(eval(Expr), Value, M) :- !,
 	eval_function(Expr, Value, M).
@@ -848,8 +848,8 @@ eval_function(Expr, Value, M) :-
 	;   Expr1 =.. [Func|Args],
 	    (   eval(Expr1, Value)
 	    ->  true
-	    ;   print_message(warning, ods(eval(Expr1))),
-		Value = error(Expr1)
+	    ;   ods_warning(eval(Expr1)),
+		Value = #('N/A')
 	    )
 	).
 
@@ -907,7 +907,7 @@ type_convert(Type, V0, V) :-
 type_convert(number, V0, V) :-
 	(   number(V0)
 	->  V = V0
-	;   print_message(warning, ods(convert(number, V0))),
+	;   ods_warning(convert(number, V0)),
 	    (	V0 == ''
 	    ->	V = 0.0
 	    ;	atom_number(V0, V)
@@ -916,7 +916,7 @@ type_convert(number, V0, V) :-
 type_convert(float, V0, V) :-
 	(   number(V0)
 	->  V is float(V0)
-	;   print_message(warning, ods(convert(number, V0))),
+	;   ods_warning(convert(number, V0)),
 	    (	V0 == ''
 	    ->	V = 0.0
 	    ;	atom_number(V0, V1),
@@ -926,13 +926,13 @@ type_convert(float, V0, V) :-
 type_convert(string, V0, V) :-
 	(   atom(V0)
 	->  V = V0
-	;   print_message(warning, ods(convert(string, V0))),
+	;   ods_warning(convert(string, V0)),
 	    atom_number(V, V0)
 	).
 
 
 no_cell(Sheet, X, Y) :-
-	print_message(warning, existence_error(cell, cell(Sheet,X,Y))).
+	ods_warning(no_cell(Sheet,X,Y)).
 
 
 		 /*******************************
@@ -1306,3 +1306,18 @@ ods_clean :-
 	retractall(M:row(_,_,_)),
 	retractall(M:cell(_,_,_,_,_,_,_)),
 	retractall(M:style(_,_)).
+
+
+		 /*******************************
+		 *	       MESSAGES		*
+		 *******************************/
+
+%%	ods_warning(+Term)
+%
+%	Print message if ods(warnings) topic is enabled
+
+ods_warning(Term) :-
+	(   debugging(ods(warnings))
+	->  print_message(warning, ods(Term))
+	;   true
+	).
