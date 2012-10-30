@@ -484,7 +484,7 @@ reference(ext(IRI, Range), Table) -->
 	range_address(Range, Table).
 reference(Range, Table) -->
 	range_address(Range, Table).
-reference(error('#REF!'), _) -->
+reference(#('REF!'), _) -->
 	"#REF!".
 
 range_address(Ref, Table) -->
@@ -756,6 +756,22 @@ eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	->  ods_eval(Then, Value, M)
 	;   ods_eval(Else, Value, M)
 	).
+eval_function('VLOOKUP'(VExpr, DataSource, Column, Sorted), Value, M) :-
+	(   ods_eval(Sorted, @false, M)
+	->  ods_eval(VExpr, V, M),
+	    (	DataSource = cell_range(Sheet, SX,SY, EX,EY)
+	    ->	(   TX is SX+Column-1,
+		    TX =< EX,		% TBD: range error
+		    between(SY, EY, Y),
+		    cell_value(Sheet, SX, Y, V)
+		->  cell_value(Sheet, TX, Y, Value)
+		;   Value = #('N/A')
+		)
+	    ;	print_message(error, ods(unsupported_datasource, DataSource)),
+		Value = #('N/A')
+	    )
+	;   print_message(error, ods(vlookup, sorted))
+	).
 eval_function(Expr, Value, M) :-
 	Expr =.. [Func|ArgExprs],
 	maplist(ods_evalm(M), ArgExprs, Args),
@@ -782,6 +798,11 @@ eval('RANK'(V, List, Order), Rank) :-
 	->  eval('RANK'(V, List), Rank)
 	;   msort(List, Ascending),
 	    nth1(Rank, Ascending, V)
+	).
+eval('ISERROR'(T), True) :-
+	(   T = #(_)
+	->  True = @true
+	;   True = @false
 	).
 eval('FALSE', @false).
 eval('TRUE', @true).
