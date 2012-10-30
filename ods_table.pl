@@ -824,11 +824,12 @@ eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	->  ods_eval(Then, Value, M)
 	;   ods_eval(Else, Value, M)
 	).
-eval_function('VLOOKUP'(VExpr, DataSource, Column, Sorted), Value, M) :-
+eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :-
 	(   ods_eval(Sorted, @false, M)
 	->  ods_eval(VExpr, V, M),
 	    (	DataSource = cell_range(Sheet, SX,SY, EX,EY)
-	    ->	(   TX is SX+Column-1,
+	    ->	(   ods_eval_typed(ColExpr, integer, Column, M),
+		    TX is SX+Column-1,
 		    TX =< EX,		% TBD: range error
 		    between(SY, EY, Y),
 		    cell_value(Sheet, SX, Y, V)
@@ -839,6 +840,20 @@ eval_function('VLOOKUP'(VExpr, DataSource, Column, Sorted), Value, M) :-
 		Value = #('N/A')
 	    )
 	;   print_message(error, ods(vlookup, sorted))
+	).
+eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :-
+	ods_eval(VExpr, V, M),		% TBD: binary search, get lastest <
+	(   DataSource = cell_range(Sheet, SX,SY, EX,EY)
+	->  (   ods_eval_typed(RowExpr, integer, Row, M),
+	        TY is SY+Row-1,
+	        TY =< EY,		% TBD: range error
+		between(SX, EX, X),
+		cell_value(Sheet, X, SY, V)
+	    ->  cell_value(Sheet, X, TY, Value)
+	    ;   Value = #('N/A')
+	    )
+	;   print_message(error, ods(unsupported_datasource, DataSource)),
+	    Value = #('N/A')
 	).
 eval_function('ISBLANK'(Expr), Value, M) :-
 	(   Expr = cell(Sheet,X,Y)
@@ -910,6 +925,7 @@ eval_varargs('MIN', List, Value) :-
 type_default(string, '').
 type_default(number, 0).
 type_default(float, 0.0).
+type_default(integer, 0).
 
 %%	type_convert(+Type, +V0, -V).
 
@@ -933,6 +949,16 @@ type_convert(float, V0, V) :-
 	    ->	V = 0.0
 	    ;	atom_number(V0, V1),
 		V is float(V1)
+	    )
+	).
+type_convert(integer, V0, V) :-
+	(   number(V0)
+	->  V is integer(V0)
+	;   ods_warning(convert(number, V0)),
+	    (	V0 == ''
+	    ->	V = 0
+	    ;	atom_number(V0, V1),
+		V is integer(V1)
 	    )
 	).
 type_convert(string, V0, V) :-
