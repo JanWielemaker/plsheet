@@ -106,12 +106,12 @@ same_values(X, Y) :-
 	;   abs(X-Y) < 0.000000001
 	).
 
+:- meta_predicate
+	p(:,+,+).
 
-
-p(X,Y) :-
-	sheet(Sheet),
-	cell(Sheet, Id, Value, Type, Formula, Style, _Annotation),
+p(M:Sheet, X,Y) :-
 	ods_table:cell_id(X, Y, Id),
+	M:cell(Sheet, Id, Value, Type, Formula, Style, _Annotation),
 	format('Value = ~q, Type = ~q, Formula = ~q, Style = ~q',
 	       [ Value, Type, Formula, Style] ).
 
