@@ -373,8 +373,26 @@ load_styles(DOM, Module) :-
 
 %%	ods_style_property(:Style, ?Property) is nondet.
 %
-%	True when Property is a property of Style.
+%	True when Property is a property   of Style. Currently extracted
+%	styles are:
 %
+%	  * font_weight(Weight)
+%	  Font weight (e.g., =bold=)
+%	  * font_name(Name)
+%	  Name of the font used for the text
+%	  * font_size(Size)
+%	  Size of the font.  See below for size representations.
+%	  * column_width(Width)
+%	  Width of the column
+%	  * cell_color(Color)
+%	  Color of the cell background
+%	  * name(Name)
+%	  Name of the style.
+%
+%	Sizes are expressed as one of pt(Points), cm(Centimeters) or
+%	mm(Millimeters)
+%
+%	@tbd	Normalize sizes?
 %	@see http://docs.oasis-open.org/office/v1.2/OpenDocument-v1.2-part1.html
 
 ods_style_property(Module:Style, Property) :-
@@ -397,7 +415,8 @@ style_property(column_width(Size), DOM) :-
 	xpath(DOM, 'table-column-properties'(@'style:column-width'=Size0), _),
 	convert_size(Size0, Size).
 style_property(cell_color(Color), DOM) :-
-	xpath(DOM, 'style:table-cell-properties'(@'fo:background-color'=Color), _).
+	xpath(DOM, 'style:table-cell-properties'(@'fo:background-color'=Color),_),
+	Color \== transparent.
 
 convert_size(Atom, Term) :-
 	size_suffix(Suffix),
@@ -826,7 +845,8 @@ cell_eval(Sheet, X, Y, Value) :-
 
 %%	cell_style(:Sheet, ?X, ?Y, ?Style)
 %
-%	True when cell X,Y in Sheet has style property Style
+%	True when cell X,Y  in  Sheet   has  style  property  Style. See
+%	ods_style_property/2 for supported styles.
 
 cell_style(Module:Sheet, X, Y, Property) :-
 	(   ground(cell(Sheet,X,Y))
