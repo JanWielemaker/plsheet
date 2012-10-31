@@ -1049,6 +1049,8 @@ type_convert(float, V0, V) :-
 		V is float(V1)
 	    )
 	).
+type_convert(percentage, V0, V) :-
+	type_convert(float, V0, V).
 type_convert(integer, V0, V) :-
 	(   number(V0)
 	->  V is integer(V0)
