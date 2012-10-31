@@ -72,16 +72,20 @@ ods_load(Module:File) :-
 	retractall(ods_spreadsheet(URI, _)),
 	assertz(ods_spreadsheet(URI, Module)).
 
-%%	ods_ensure_loaded(+URL, -Module)
+%%	ods_ensure_loaded(+URL, -Module) is semidet.
 %
 %	True when the spreadsheet in URL is loaded into Module.
 
 ods_ensure_loaded(URI, Module) :-
-	ods_spreadsheet(URI, Module), !.
+	ods_spreadsheet(URI, Module), !,
+	Module \= #(_).
 ods_ensure_loaded(URI, Module) :-
 	uri_file_name(URI, File),
-	ods_load(URI:File),
-	Module = URI.
+	(   access_file(File, read)
+	->  ods_load(URI:File),
+	    Module = URI
+	;   assertz(ods_spreadsheet(URI, #('REF!')))
+	).
 
 
 %%	cell_id(+X, +Y, -ID) is det.
@@ -778,8 +782,11 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY)))
 	).
 ods_eval(ext(URL, Ref), Value, _Module) :- !,
-	ods_ensure_loaded(URL, MExt),
-	ods_eval(Ref, Value, MExt).
+	(   ods_ensure_loaded(URL, MExt)
+	->  ods_eval(Ref, Value, MExt)
+	;   ods_warning(no_ext(URL)),
+	    Value = #('REF!')
+	).
 ods_eval(eval(Expr), Value, M) :- !,
 	eval_function(Expr, Value, M).
 ods_eval(A+B, Value, M) :- !,
@@ -995,6 +1002,21 @@ eval_varargs('MIN', List, Value) :-
 	    min_list(Numbers, Value)
 	;   Value = 0
 	).
+eval_varargs('CONCATENATE', List, Value) :-
+	maplist(normalize_value, List, Normalized),
+	atomic_list_concat(Normalized, Value0),
+	normalize_space(atom(Value), Value0). % Seems to be used.
+
+%%	normalize_value(+Raw, -Normalized)
+%
+%	Normalizes floats that happen to be int to integers.
+
+normalize_value(Float, Int) :-
+	float(Float),
+	float_fractional_part(Float) =:= 0.0, !,
+	Int is integer(Float).
+normalize_value(Value, Value).
+
 
 %%	type_default(+Type, -Default).
 
