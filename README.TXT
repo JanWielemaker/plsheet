@@ -43,3 +43,14 @@ spreadsheets around as values and operate on them.
 
 unoconv -f ods *.xlsx
 
+---+ Approach
+
+---++ Dependency discovery
+
+Dependency of a cell is a cell or datasource.
+
+---++ Identify Datasources
+
+A datasource is a block of cells (cell_range(Sheet,SX,SY,EX,EY)).
+
+  - Identify as dependency from formulas
