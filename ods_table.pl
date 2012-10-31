@@ -374,12 +374,16 @@ style_property(font_weight(W), DOM) :-
 	xpath(DOM, 'style:text-properties'(@'fo:font-weight'=W), _).
 style_property(font_name(Name), DOM) :-
 	xpath(DOM, 'style:text-properties'(@'style:font-name'=Name), _).
+style_property(name(Name), DOM) :-
+	xpath(DOM, /'style:style'(@'style:name'=Name), _).
 style_property(font_size(Size), DOM) :-
 	xpath(DOM, 'style:text-properties'(@'fo:font-size'=Size0), _),
 	convert_size(Size0, Size).
 style_property(column_width(Size), DOM) :-
 	xpath(DOM, 'table-column-properties'(@'style:column-width'=Size0), _),
 	convert_size(Size0, Size).
+style_property(cell_color(Color), DOM) :-
+	xpath(DOM, 'style:table-cell-properties'(@'fo:background-color'=Color), _).
 
 convert_size(Atom, Term) :-
 	size_suffix(Suffix),
