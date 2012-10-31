@@ -18,6 +18,46 @@
 :- use_module(finance).
 :- set_prolog_flag(optimise, true).
 
+/** <module> Load Open Document Spreadsheets
+
+This module loads an Open Document spreadsheet into the Prolog database.
+The primary call is ods_load/1, which adds  the following facts into the
+calling module:
+
+    * sheet(Sheet, Style)
+    * col(Sheet, X, Style)
+    * row(Sheet, Y, Style)
+    * cell(Sheet, Id, Value, Type, Formula, Style, Annotation)
+    * style(Name, XMLDOM)
+
+In addition, it provides  the   following  high-level  query primitives:
+cell_value/4, cell_type/4, cell_formula/4, cell_eval/4 and cell_style/4.
+All these predicates use the same calling convention, e.g.,
+
+    ==
+    cell_value(Sheet, X, Y, Value)
+    ==
+
+where Sheet is the name of the sheet, X is the column (an integer) and Y
+is the row (an  integer).  Value  is   the  current  value  of the cell.
+Although integer columns are easier for computation, these predicates do
+allow specifying the column  as  an  atom.   E.g.,  the  value  of  cell
+=|WindOffshore.D43|= can be requested using  the   call  below.  This is
+mainly intended for querying from the toplevel.
+
+    ==
+    ?- cell_value('WindOffshore', d, 43, X).
+    X = 0.07629.
+    ==
+
+Values are represented using the following conventions:
+
+    * Textual values are represented using an atom
+    * Numerical values are represented using Prolog numbers
+    * Booleans are represented as @true or @false
+    * Errors are representated as #(Error)
+*/
+
 :- meta_predicate
 	ods_load(:),
 	ods_eval(:, -),
@@ -93,7 +133,12 @@ ods_ensure_loaded(URI, Module) :-
 
 cell_id(X, Y, ID) :-
 	nonvar(X), nonvar(Y), !,
-	ID is Y*1024+X.
+	(   integer(X)
+	->  ID is Y*1024+X
+	;   upcase_atom(X, XU),
+	    column_name(I, XU),
+	    ID is Y*1024+I
+	).
 cell_id(X, Y, ID) :-
 	nonvar(ID), !,
 	Y is ID//1024,
