@@ -36,6 +36,7 @@ calling module:
     * col(Sheet, X, Style)
     * row(Sheet, Y, Style)
     * cell(Sheet, Id, Value, Type, Formula, Style, Annotation)
+    * span(Id, IdBase)
     * style(Name, XMLDOM)
 
 In addition, it provides  the   following  high-level  query primitives:
@@ -110,6 +111,7 @@ archive_dom(Archive, DOM, Options) :-
 %	    - col(Table, X, Style)
 %	    - row(Table, Y, Style)
 %	    - cell(Table, ID, Value, Type, Formula, Style, Annotation)
+%	    - span(ID, IDBase)
 %	    - style(Style, Properties)
 
 ods_load(Module:DOM) :-
@@ -126,6 +128,7 @@ ods_load(Module:Spec) :-
 	),
 	statistics(cputime, CPU0),
 	ods_DOM(File, DOM, []),
+	dynamic_decls(Module),
 	ods_load(Module:DOM),
 	statistics(cputime, CPU1),
 	CPU is CPU1-CPU0,
@@ -229,15 +232,18 @@ load_cell(DOM, State, Module) :-
 	arg(3, State, Table),
 	(   memberchk('table:number-columns-repeated'=RepA, CellAttrs),
 	    atom_number(RepA, Rep)
-	->  true
-	;   Rep = 1
+	->  Columns = Rep,  Repeat = Rep
+	;   memberchk('table:number-columns-spanned'=SpanA, CellAttrs),
+	    atom_number(SpanA, Span), Span =\= 1
+	->  Columns = Span, Repeat = 1
+	;   Columns = 1,    Repeat = 1
 	),
-	End is X0+Rep-1,
+	EndRep is X0+Repeat-1,
 	(   Content == []
-	->  debug(ods(cell), '~w empty cells', [Rep]),
+	->  debug(ods(cell), '~w empty cells', [Columns]),
 	    (	cell_style(DOM, Style),
 		Style \== default
-	    ->	forall(between(X0, End, X),
+	    ->	forall(between(X0, EndRep, X),
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
 			 cell_id(X,Y,Id),
 			 assertz(Module:cell(Table,Id,
@@ -253,7 +259,7 @@ load_cell(DOM, State, Module) :-
 	    xpath(Annotation, /'office:annotation'(self), _)
 	->  (   cell_style(DOM, Style),
 	        cell_annotations(DOM, Annotations)
-	    ->	forall(between(X0, End, X),
+	    ->	forall(between(X0, EndRep, X),
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
 			 cell_id(X,Y,Id),
 			 assertz(Module:cell(Table,Id,
@@ -270,7 +276,7 @@ load_cell(DOM, State, Module) :-
 		cell_value(DOM, Type, Value),
 		cell_formula(DOM, Table, Formula),
 		cell_annotations(DOM, Annotations)
-	    ->  forall(between(X0, End, X),
+	    ->  forall(between(X0, EndRep, X),
 		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
 			 cell_id(X,Y,Id),
 			 assertz(Module:cell(Table,Id,
@@ -283,7 +289,17 @@ load_cell(DOM, State, Module) :-
 	    ;	ods_warning(convert_failed(cell, DOM))
 	    )
 	),
-	NextX is End+1,
+	(   nonvar(Span)
+	->  X1 is X0+1,
+	    EndSpan is X0+Columns-1,
+	    cell_id(X0,Y,Id0),
+	    forall(between(X1, EndSpan, X),
+		   ( cell_id(X,Y,Id),
+		     assertz(Module:span(Id, Id0))
+		   ))
+	;   true
+	),
+	NextX is X0+Columns,
 	nb_setarg(1, State, NextX).
 
 cell_type(DOM, Type) :-
@@ -1235,17 +1251,24 @@ ods_unload :-
 	clean_fixup,
 	retractall(ods_table:ods_spreadsheet(_, M)),
 	(   predicate_property(M:sheet(_,_), dynamic)
-	->  retractall(M:sheet(_,_)),
-	    retractall(M:col(_,_,_)),
-	    retractall(M:row(_,_,_)),
-	    retractall(M:cell(_,_,_,_,_,_,_)),
-	    retractall(M:style(_,_))
-	;   abolish(M:sheet/2),
-	    abolish(M:col/3),
-	    abolish(M:row/3),
-	    abolish(M:cell/7),
-	    abolish(M:style/2)
+	->  forall(data_predicate(Name/Arity),
+		   ( functor(Head, Name, Arity),
+		     retractall(M:Head)))
+	;   forall(data_predicate(P),
+		   abolish(M:P))
 	).
+
+dynamic_decls(M) :-
+	forall(data_predicate(P),
+	       dynamic(M:P)).
+
+data_predicate(sheet/2).
+data_predicate(col/3).
+data_predicate(row/3).
+data_predicate(cell/7).
+data_predicate(span/2).
+data_predicate(style/2).
+
 
 %%	ods_unload_all is det.
 %
