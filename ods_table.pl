@@ -15,7 +15,7 @@
 :- use_module(library(xpath)).
 :- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
-:- use_module(finance).
+:- use_module(of_functions).
 :- set_prolog_flag(optimise, true).
 
 /** <module> Load Open Document Spreadsheets

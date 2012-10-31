@@ -1,6 +1,14 @@
-:- module(finance,
+:- module(of_functions,
 	  [ pmt/6			% +Rate, +Nper, +Pv, +Fv, +PayType, -Value
 	  ]).
+
+/** <module> Advanced Open Formula functions
+
+This module provides the more  advanced   functions  defined by the Open
+Formula specification.
+
+@tbd	Implement most of them
+*/
 
 %%	pmt(+Zins, +Zzr, +Bw, +Zw, +F, -Value)
 %
