@@ -866,7 +866,10 @@ ods_eval(A*B, Value, M) :- !,
 ods_eval(A/B, Value, M) :- !,
 	ods_eval_typed(A, number, VA, M),
 	ods_eval_typed(B, number, VB, M),
-	Value is VA/VB.
+	(   VB =:= 0
+	->  Value = #('DIV/0!')
+	;   Value is VA/VB
+	).
 ods_eval(-A, Value, M) :- !,
 	ods_eval_typed(A, number, VA, M),
 	Value is -VA.
@@ -1018,12 +1021,17 @@ eval('AVERAGE'(List), Value) :-
 eval('RANK'(V, List), Rank) :-
 	msort(List, Sorted),
 	reverse(Sorted, Descending),
-	nth1(Rank, Descending, V).
+	(   nth1(Rank, Descending, V)
+	->  true
+	;   Rank = #('N/A')
+	).
 eval('RANK'(V, List, Order), Rank) :-
 	(   Order =:= 0
 	->  eval('RANK'(V, List), Rank)
 	;   msort(List, Ascending),
 	    nth1(Rank, Ascending, V)
+	->  true
+	;   Rank = #('N/A')
 	).
 eval('ISERROR'(T), True) :-
 	(   T = #(_)
