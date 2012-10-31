@@ -124,8 +124,15 @@ ods_load(Module:Spec) :-
 	;   uri_file_name(URI, Spec),
 	    File = Spec
 	),
+	statistics(cputime, CPU0),
 	ods_DOM(File, DOM, []),
 	ods_load(Module:DOM),
+	statistics(cputime, CPU1),
+	CPU is CPU1-CPU0,
+	predicate_property(Module:sheet(_,_), number_of_clauses(Sheets)),
+	predicate_property(Module:cell(_,_,_,_,_,_,_), number_of_clauses(Cells)),
+	print_message(informational,
+		      ods(loaded(Module:Spec, CPU, Sheets, Cells))),
 	retractall(ods_spreadsheet(URI, _)),
 	assertz(ods_spreadsheet(URI, Module)).
 
@@ -1305,3 +1312,7 @@ message(updated_ext(IRI0, IRI)) -->
 	].
 message(no_ext(IRI)) -->
 	[ 'Missing external reference: ~q'-[IRI] ].
+message(loaded(Module:File, CPU, Sheets, Cells)) -->
+	[ 'Loaded ~q into ~q; ~3f sec; ~D cells in ~D sheets'-
+	  [File, Module, CPU, Cells, Sheets]
+	].
