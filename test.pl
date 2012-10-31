@@ -17,7 +17,7 @@ load :-
 	load(File).
 
 load(File) :-
-	ods_clean,
+	ods_unload,
 	ods_load(File).
 
 test(Sheet, X,Y) :-

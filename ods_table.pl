@@ -1,7 +1,10 @@
 :- module(ods_table,
-	  [ ods_DOM/3,			% +File, -DOM, +Options
-	    ods_load/1,			% :DOM
-	    ods_clean/0,
+	  [ ods_load/1,			% :File
+	    ods_current/1,		% :URL
+	    ods_unload/0,
+	    ods_unload_all/0,
+	    ods_compile/0,
+	    ods_compile_all/0,
 	    ods_eval/2,			% +Expression, -Value
 	    ods_style_property/2,	% :Style, ?Property
 	    cell_value/4,		% :Sheet, ?X, ?Y, ?Value
@@ -13,6 +16,10 @@
 	    column_name/2		% ?Index, ?Name
 	  ]).
 :- use_module(library(xpath)).
+:- use_module(library(sgml)).
+:- use_module(library(uri)).
+:- use_module(library(archive)).
+:- use_module(library(apply_macros)).
 :- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
 :- use_module(of_functions).
@@ -60,6 +67,7 @@ Values are represented using the following conventions:
 
 :- meta_predicate
 	ods_load(:),
+	ods_current(:),
 	ods_eval(:, -),
 	ods_style_property(:, ?),
 	cell_value(:, ?, ?, ?),
@@ -90,10 +98,12 @@ archive_dom(Archive, DOM, Options) :-
 	    load_structure(Stream, DOM, XMLOptions),
 	    close(Stream)).
 
-%%	ods_load(:DOM)
+%%	ods_load(:Data)
 %
-%	Convert tables in DOM into a  set   of  Prolog predicates in the
-%	calling module.  The generated predicates are:
+%	Load a spreadsheet. Data is either a parsed XML DOM, a file name
+%	or a URI. Tables in the spreadsheet  are converted into a set of
+%	Prolog  predicates  in  the  calling    module.   The  generated
+%	predicates are:
 %
 %	    - sheet(Name, Style)
 %	    - col(Table, X, Style)
@@ -102,13 +112,19 @@ archive_dom(Archive, DOM, Options) :-
 %	    - style(Style, Properties)
 
 ods_load(Module:DOM) :-
+	nonvar(DOM),
 	DOM = [element(_,_,_)], !,
 	load_styles(DOM, Module),
 	load_tables(DOM, Module).
-ods_load(Module:File) :-
+ods_load(Module:Spec) :-
+	(   uri_is_global(Spec)
+	->  uri_file_name(Spec, File),
+	    URI = Spec
+	;   uri_file_name(URI, Spec),
+	    File = Spec
+	),
 	ods_DOM(File, DOM, []),
 	ods_load(Module:DOM),
-	uri_file_name(URI, File),
 	retractall(ods_spreadsheet(URI, _)),
 	assertz(ods_spreadsheet(URI, Module)).
 
@@ -1475,21 +1491,68 @@ col_chars(Col, List, T) :-
 		 *	      CLEANUP		*
 		 *******************************/
 
-%%	ods_clean
+%%	ods_unload
 %
 %	Remove saved facts from the database
 
 :- module_transparent
-	ods_clean/0.
+	ods_unload/0,
+	ods_compile/0.
 
-ods_clean :-
+ods_unload :-
 	context_module(M),
 	clean_fixup,
-	retractall(M:sheet(_,_)),
-	retractall(M:col(_,_,_)),
-	retractall(M:row(_,_,_)),
-	retractall(M:cell(_,_,_,_,_,_,_)),
-	retractall(M:style(_,_)).
+	retractall(ods_table:ods_spreadsheet(_, M)),
+	(   predicate_property(M:sheet(_,_), dynamic)
+	->  retractall(M:sheet(_,_)),
+	    retractall(M:col(_,_,_)),
+	    retractall(M:row(_,_,_)),
+	    retractall(M:cell(_,_,_,_,_,_,_)),
+	    retractall(M:style(_,_))
+	;   abolish(M:sheet/2),
+	    abolish(M:col/3),
+	    abolish(M:row/3),
+	    abolish(M:cell/7),
+	    abolish(M:style/2)
+	).
+
+%%	ods_unload_all is det.
+%
+%	Unload all currently loaded spreadsheets.
+
+ods_unload_all :-
+	forall(ods_spreadsheet(_, M),
+	       M:ods_unload).
+
+
+%%	ods_compile
+%
+%	Lock the spreadsheet predicates as static to make them faster.
+
+ods_compile :-
+	context_module(M),
+	compile_predicates(M:[ sheet/2,
+			       col/3,
+			       row/3,
+			       cell/7,
+			       style/2
+			     ]).
+
+%%	ods_compile_all is det.
+%
+%	Compile all loaded spreadsheets
+
+ods_compile_all :-
+	forall(ods_spreadsheet(_, M),
+	       M:ods_compile).
+
+
+%%	ods_current(:URL) is nondet.
+%
+%	True when URL is the currently loaded spreadsheet.
+
+ods_current(Module:URL) :-
+	ods_spreadsheet(URL, Module).
 
 
 		 /*******************************
