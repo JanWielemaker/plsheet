@@ -232,11 +232,16 @@ load_cell(DOM, State, Module) :-
 	arg(3, State, Table),
 	(   memberchk('table:number-columns-repeated'=RepA, CellAttrs),
 	    atom_number(RepA, Rep)
-	->  Columns = Rep,  Repeat = Rep
+	->  Columns = Rep,  Repeat = Rep, Span = 1
 	;   memberchk('table:number-columns-spanned'=SpanA, CellAttrs),
-	    atom_number(SpanA, Span), Span =\= 1
+	    atom_number(SpanA, Span)
 	->  Columns = Span, Repeat = 1
-	;   Columns = 1,    Repeat = 1
+	;   Columns = 1,    Repeat = 1, Span = 1
+	),
+	(   memberchk('table:number-rows-spanned'=VSpanA, CellAttrs),
+	    atom_number(VSpanA, VSpan)
+	->  true
+	;   VSpan = 1
 	),
 	EndRep is X0+Repeat-1,
 	(   Content == []
@@ -289,18 +294,23 @@ load_cell(DOM, State, Module) :-
 	    ;	ods_warning(convert_failed(cell, DOM))
 	    )
 	),
-	(   nonvar(Span)
-	->  X1 is X0+1,
-	    EndSpan is X0+Columns-1,
-	    cell_id(X0,Y,Id0),
-	    forall(between(X1, EndSpan, X),
-		   ( cell_id(X,Y,Id),
-		     assertz(Module:span(Id, Id0))
-		   ))
+	(   (Span > 1 ; VSpan > 1)
+	->  cell_id(X0,Y,Id0),
+	    EndSpanX is X0+Columns-1,
+	    EndSpanY is Y+VSpan-1,
+	    forall(between(Y, EndSpanY, YS),
+		   forall(between(X0, EndSpanX, XS),
+			  ( cell_id(XS,YS,IDS),
+			    (	IDS \== Id0
+			    ->	assertz(Module:span(IDS, Id0))
+			    ;	true
+			    )
+			  )))
 	;   true
 	),
 	NextX is X0+Columns,
 	nb_setarg(1, State, NextX).
+
 
 cell_type(DOM, Type) :-
 	xpath(DOM, /'table:table-cell'(@'office:value-type'), OfficeType),
