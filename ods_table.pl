@@ -13,7 +13,8 @@
 	    cell_eval/4,		% :Sheet, ?X, ?Y, -Value
 	    cell_style/4,		% :Sheet, ?X, ?Y, ?Property
 
-	    column_name/2		% ?Index, ?Name
+	    column_name/2,		% ?Index, ?Name
+	    ods_DOM/3			% :Source, -DOM, +Options
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(sgml)).
