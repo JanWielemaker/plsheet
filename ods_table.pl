@@ -448,7 +448,7 @@ style_property(font_size(Size), DOM) :-
 	xpath(DOM, 'style:text-properties'(@'fo:font-size'=Size0), _),
 	convert_size(Size0, Size).
 style_property(column_width(Size), DOM) :-
-	xpath(DOM, 'table-column-properties'(@'style:column-width'=Size0), _),
+	xpath(DOM, 'style:table-column-properties'(@'style:column-width'=Size0), _),
 	convert_size(Size0, Size).
 style_property(cell_color(Color), DOM) :-
 	xpath(DOM, 'style:table-cell-properties'(@'fo:background-color'=Color),_),
@@ -884,7 +884,14 @@ cell_eval(Sheet, X, Y, Value) :-
 %	True when cell X,Y  in  Sheet   has  style  property  Style. See
 %	ods_style_property/2 for supported styles.
 
-cell_style(Module:Sheet, X, Y, Property) :-
+cell_style(Sheet, X, Y, Property) :-
+	nonvar(Property), !,
+	style_property_level(Property, Where),
+	cell_style(Where, Sheet, X, Y, Property).
+cell_style(Sheet, X, Y, Property) :-
+	cell_style(_, Sheet, X, Y, Property).
+
+cell_style(cell, Module:Sheet, X, Y, Property) :-
 	(   ground(cell(Sheet,X,Y))
 	->  cell_id(X,Y,Id),
 	    once(Module:cell(Sheet, Id, _, _, _, Style, _))
@@ -892,6 +899,28 @@ cell_style(Module:Sheet, X, Y, Property) :-
 	    cell_id(X,Y,Id)
 	),
 	ods_style_property(Module:Style, Property).
+cell_style(column, Module:Sheet, Col, _, Property) :-
+	(   ground(cell(Sheet,Col))
+	->  column_id(Col, X),
+	    once(Module:col(Sheet, X, Style))
+	;   Module:col(Sheet, Col, Style)
+	),
+	ods_style_property(Module:Style, Property).
+
+column_id(Col, X) :-
+	(   integer(Col)
+	->  X = Col
+	;   upcase_atom(Col, Up),
+	    column_name(X, Up)
+	).
+
+style_property_level(column_width(_),	column).
+style_property_level(font_weight(_),	cell).
+style_property_level(font_name(_),	cell).
+style_property_level(font_size(_),	cell).
+style_property_level(cell_color(_),	cell).
+style_property_level(name(_),		cell).
+
 
 
 		 /*******************************
