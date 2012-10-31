@@ -227,7 +227,21 @@ load_cell(DOM, State, Module) :-
 	),
 	End is X0+Rep-1,
 	(   Content == []
-	->  debug(ods(cell), '~w empty cells', [Rep])
+	->  debug(ods(cell), '~w empty cells', [Rep]),
+	    (	cell_style(DOM, Style),
+		Style \== default
+	    ->	forall(between(X0, End, X),
+		       ( debug(ods(cell), '~q,~q: ~q', [X,Y,Value]),
+			 cell_id(X,Y,Id),
+			 assertz(Module:cell(Table,Id,
+					     @empty,
+					     no_type,
+					     -,
+					     Style,
+					     []))
+		       ))
+	    ;	true
+	    )
 	;   Content = [Annotation],
 	    xpath(Annotation, /'office:annotation'(self), _)
 	->  (   cell_style(DOM, Style),
@@ -772,7 +786,8 @@ cell_value(Module:Sheet, X, Y, Value) :-
 	    once(Module:cell(Sheet, Id, Value, _, _, _, _))
 	;   Module:cell(Sheet, Id, Value, _, _, _, _),
 	    cell_id(X,Y,Id)
-	).
+	),
+	Value \== @empty.
 
 %%	cell_type(:Sheet, ?X, ?Y, ?Type)
 %
@@ -820,7 +835,7 @@ cell_style(Module:Sheet, X, Y, Property) :-
 	;   Module:cell(Sheet, Id, _, _, _, Style, _),
 	    cell_id(X,Y,Id)
 	),
-	ods_style_property(Style, Property).
+	ods_style_property(Module:Style, Property).
 
 
 		 /*******************************
