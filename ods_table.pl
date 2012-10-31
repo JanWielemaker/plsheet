@@ -65,6 +65,9 @@ Values are represented using the following conventions:
     * Numerical values are represented using Prolog numbers
     * Booleans are represented as @true or @false
     * Errors are representated as #(Error)
+
+@tbd	Add interface to query cell spanning
+@tbd	Correctly report cell boolean and error values.
 */
 
 :- meta_predicate
