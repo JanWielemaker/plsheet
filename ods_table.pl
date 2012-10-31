@@ -55,7 +55,7 @@ archive_dom(Archive, DOM, Options) :-
 %	Convert tables in DOM into a  set   of  Prolog predicates in the
 %	calling module.  The generated predicates are:
 %
-%	    - table(Name, Style)
+%	    - sheet(Name, Style)
 %	    - col(Table, X, Style)
 %	    - row(Table, Y, Style)
 %	    - cell(Table, ID, Value, Type, Formula, Style, Annotation)
@@ -105,7 +105,7 @@ load_tables(DOM, Module) :-
 	       load_table(Table, Name, Style, Module)).
 
 load_table(DOM, Name, TStyle, Module) :-
-	assertz(Module:table(Name, TStyle)),
+	assertz(Module:sheet(Name, TStyle)),
 	State = state(1,1,Name,_),
 	forall(xpath(DOM, 'table:table-column'(@'table:style-name'=Style), Col),
 	       load_column(Col, Style, State, Module)),
@@ -1440,7 +1440,7 @@ col_chars(Col, List, T) :-
 ods_clean :-
 	context_module(M),
 	clean_fixup,
-	retractall(M:table(_,_)),
+	retractall(M:sheet(_,_)),
 	retractall(M:col(_,_,_)),
 	retractall(M:row(_,_,_)),
 	retractall(M:cell(_,_,_,_,_,_,_)),
