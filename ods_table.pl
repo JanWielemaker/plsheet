@@ -23,6 +23,7 @@
 :- use_module(library(apply_macros)).
 :- use_module(library(lists)).
 :- use_module(library(dcg/basics)).
+:- use_module(library(aggregate)).
 :- use_module(of_functions).
 :- set_prolog_flag(optimise, true).
 
@@ -1020,6 +1021,7 @@ ods_eval('%'(A), Value, M) :- !,
 	->  Value is VA/100.0
 	;   domain_error(percentage, VA)
 	).
+ods_eval(#(Error), #(Error), _) :- !.
 ods_eval(X, X, _).
 
 ods_eval_typed(cell(Sheet, X, Y), Type, Value, M) :- !,
@@ -1044,7 +1046,8 @@ cell_value(Sheet,X,Y, Type, Value, M) :-
 
 ods_eval_if_exists(cell(Sheet,X,Y), Value, M) :-
 	cell_id(X,Y,Id),
-	M:cell(Sheet, Id, Value, _Type, _, _, _), !.
+	M:cell(Sheet, Id, Value, _Type, _, _, _), !,
+	Value \== @empty.
 
 eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	ods_eval(Cond, VC, M),
@@ -1052,7 +1055,7 @@ eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	->  ods_eval(Then, Value, M)
 	;   ods_eval(Else, Value, M)
 	).
-eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :-
+eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
 	(   ods_eval(Sorted, @false, M)
 	->  ods_eval(VExpr, V, M),
 	    (	DataSource = cell_range(Sheet, SX,SY, EX,EY)
@@ -1069,7 +1072,7 @@ eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :-
 	    )
 	;   print_message(error, ods(vlookup, sorted))
 	).
-eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :-
+eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :- !,
 	ods_eval(VExpr, V, M),		% TBD: binary search, get lastest <
 	(   DataSource = cell_range(Sheet, SX,SY, EX,EY)
 	->  (   ods_eval_typed(RowExpr, integer, Row, M),
@@ -1083,7 +1086,7 @@ eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :-
 	;   print_message(error, ods(unsupported_datasource, DataSource)),
 	    Value = #('N/A')
 	).
-eval_function('ISBLANK'(Expr), Value, M) :-
+eval_function('ISBLANK'(Expr), Value, M) :- !,
 	(   Expr = cell(Sheet,X,Y)
 	->  cell_id(X,Y,Id),
 	    (	M:cell(Sheet, Id, CellValue, _Type, _, _, _),
@@ -1095,6 +1098,16 @@ eval_function('ISBLANK'(Expr), Value, M) :-
 	->  Value = @true
 	;   Value = @false
 	).
+eval_function('COUNTIF'(In, &(Op,To)), Value, M) :- !,
+	range_goal(In, V, Goal, M),	% TBD: What about &?
+	ods_eval(To, VTo),		% TBD: Comparison to empty cells
+	Func =.. [Op,V,VTo],
+	same_type_condition(VTo, V, TypeCond),
+	aggregate_all(count,
+		      ( Goal, TypeCond,
+			ods_eval(Func, @true, M)
+		      ),
+		      Value).
 eval_function(Expr, Value, M) :-
 	Expr =.. [Func|ArgExprs],
 	maplist(ods_evalm(M), ArgExprs, Args),
@@ -1159,6 +1172,8 @@ eval('ROUNDDOWN'(Float, Digits), Value) :-
 	;   Div is 10^(-integer(Digits)),
 	    Value is truncate(Float/Div)*Div
 	).
+eval('EXP'(Float), Value) :-
+	Value is exp(Float).
 eval('FALSE', @false).
 eval('TRUE', @true).
 
@@ -1204,6 +1219,7 @@ type_default(integer, 0).
 type_convert(Type, V0, V) :-
 	var(Type), !,
 	V = V0.
+type_convert(_, #(Error), #(Error)) :- !.
 type_convert(number, V0, V) :-
 	(   number(V0)
 	->  V = V0
@@ -1245,6 +1261,30 @@ type_convert(string, V0, V) :-
 
 no_cell(Sheet, X, Y) :-
 	ods_warning(no_cell(Sheet,X,Y)).
+
+%%	range_goal(+Spec, -Goal, +Module) is det.
+
+range_goal(cell_range(Sheet, SX,SY, EX,EY), V, Goal, M) :- !,
+	(   SX == EX
+	->  Goal = ( between(SY,EY,Y),
+	             ods_eval_if_exists(cell(Sheet,SX,Y), V, M)
+		   )
+	;   SY == EY
+	->  Goal = ( between(SX,EX,X),
+		     ods_eval_if_exists(cell(Sheet,X,SY), V, M)
+		   )
+	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY))),
+	    Goal = fail
+	).
+range_goal(Expr, _, fail, _) :-
+	ods_warning(range_expected(Expr)).
+
+same_type_condition(Ref, V, number(V)) :-
+	number(Ref), !.
+same_type_condition(Ref, V, atom(V)) :-
+	atom(Ref), !.
+same_type_condition(Ref, _, true) :-
+	ods_warning(same_type_condition(Ref)).
 
 
 		 /*******************************
