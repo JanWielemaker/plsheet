@@ -151,19 +151,19 @@ ods_ensure_loaded(URI, Module) :-
 cell_id(X, Y, ID) :-
 	nonvar(X), nonvar(Y), !,
 	(   integer(X)
-	->  ID is Y*1024+X
+	->  ID is Y*10000+X
 	;   upcase_atom(X, XU),
 	    column_name(I, XU),
-	    ID is Y*1024+I
+	    ID is Y*10000+I
 	).
 cell_id(X, Y, ID) :-
 	nonvar(ID), !,
-	Y is ID//1024,
-	X is ID mod 1024.
+	Y is ID//10000,
+	X is ID mod 10000.
 
 load_tables(DOM, Module) :-
 	forall(xpath(DOM, //'table:table'(@'table:name'=Name,
-					@'table:style-name'=Style), Table),
+					  @'table:style-name'=Style), Table),
 	       load_table(Table, Name, Style, Module)).
 
 load_table(DOM, Name, TStyle, Module) :-
