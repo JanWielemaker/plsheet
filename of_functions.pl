@@ -8,6 +8,7 @@ This module provides the more  advanced   functions  defined by the Open
 Formula specification.
 
 @tbd	Implement most of them
+@see	http://cgit.freedesktop.org/libreoffice/core/tree/sc/source/core/tool/interpr2.cxx
 */
 
 %%	pmt(+Zins, +Zzr, +Bw, +Zw, +F, -Value)
