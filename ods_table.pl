@@ -985,7 +985,7 @@ ods_eval(+A, Value, M) :- !,
 ods_eval(A=B, Value, M) :- !,
 	ods_eval(A, VA, M),
 	ods_eval(B, VB, M),
-	(   VA == VB
+	(   ods_equal(VA, VB)
 	->  Value = @true
 	;   Value = @false
 	).
@@ -1377,6 +1377,17 @@ ods_before(V1, V2) :-
 	V1 @< V2.			% @<: number < atom < compound
 
 ods_before_special(false, true).
+
+%%	ods_equal(+Value1, +Value2) is semidet.
+%
+%	True if Value1 and Value2 have the same value.
+
+ods_equal(X, X) :- !.
+ods_equal(N1, N2) :-
+	number(N1), number(N2), !,
+	N1 =:= N2.
+
+
 
 %%	same_type_condition(+Value, +Var, -Goal) is det.
 %
