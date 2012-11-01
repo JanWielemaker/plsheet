@@ -1119,6 +1119,38 @@ eval_function('HLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
 	    )
 	;   eval_function('HLOOKUP'(VExpr, DataSource, ColExpr), Value, M)
 	).
+eval_function('MATCH'(VExpr, Values), Value, M) :- !,
+	eval_function('MATCH'(VExpr, Values, 1), Value, M).
+eval_function('MATCH'(VExpr, ValuesExpr, How), Value, M) :- !,
+	ods_eval(VExpr, Target, M),
+	ods_eval(ValuesExpr, Values),
+	(   \+ is_list(Values)
+	->  Value = #('N/A')
+	;   How =:= 1
+	->  (   Values = [H|_],
+	        ods_before(Target, H)
+	    ->	Value = #('N/A')
+	    ;	nth1(Index, Values, V),
+		ods_before(V, Target)
+	    ->	Value is V-1
+	    ;	length(Values, Value)
+	    )
+	;   How =:= 0
+	->  (   nth1(Index, Values, Target)
+	    ->	Value = Index
+	    ;	Value = #('N/A')
+	    )
+	;   How =:= -1
+	->  (   Values = [H|_],
+	        ods_before(H, Target)
+	    ->	Value = #('N/A')
+	    ;	nth1(Index, Values, V),
+		ods_before(Target, V)
+	    ->	Value is V-1
+	    ;	length(Values, Value)
+	    )
+	;   Value = #('N/A')
+	).
 eval_function('ISBLANK'(Expr), Value, M) :- !,
 	(   Expr = cell(Sheet,X,Y)
 	->  cell_id(X,Y,Id),
@@ -1194,6 +1226,17 @@ eval('PMT'(Rate, Nper, Pv, Fv), Value) :-
 	pmt(Rate, Nper, Pv, Fv, 0, Value).
 eval('PMT'(Rate, Nper, Pv), Value) :-
 	pmt(Rate, Nper, Pv, 0, 0, Value).
+eval('ROUND'(Float), Value) :-
+	Value is round(Float).
+eval('ROUND'(Float, Digits), Value) :-
+	(   Digits =:= 0
+	->  Value is round(Float)
+	;   Digits > 0
+	->  Mult is 10^integer(Digits),
+	    Value is round(Float*Mult)/Mult
+	;   Div is 10^(-integer(Digits)),
+	    Value is round(Float/Div)*Div
+	).
 eval('ROUNDDOWN'(Float), Value) :-
 	Value is truncate(Float).
 eval('ROUNDDOWN'(Float, Digits), Value) :-
