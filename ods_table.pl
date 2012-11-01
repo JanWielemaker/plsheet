@@ -950,6 +950,10 @@ ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 		    List)
 	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY)))
 	).
+ods_eval(Ref1:Ref2, Value, Module) :- !,
+	eval_reference(Ref1, cell(S,SX,SY), Module),
+	eval_reference(Ref2, cell(S,EX,EY), Module),
+	ods_eval(cell_range(S,SX,SY,EX,EY), Value, Module).
 ods_eval(ext(URL, Ref), Value, _Module) :- !,
 	(   ods_ensure_loaded(URL, MExt)
 	->  ods_eval(Ref, Value, MExt)
@@ -1041,6 +1045,33 @@ cell_value(Sheet,X,Y, Type, Value, M) :-
 	->  Value = Value0
 	).
 
+%%	eval_reference(+Spec, -Ref, +Module)
+%
+%	Evaluate an expression to a reference.
+
+eval_reference(Ref, Ref, _) :-
+	is_reference(Ref), !.
+eval_reference(eval('OFFSET'(Ref0, OXExpr, OYExpr)), Ref, M) :-
+	ods_eval_typed(OXExpr, integer, OX, M),
+	ods_eval_typed(OYExpr, integer, OY, M),
+	offset_reference(Ref0, OX, OY, Ref).
+
+is_reference(#(_)).
+is_reference(cell(_,_,_)).
+is_reference(cell_range(_,_,_,_,_)).
+
+%%	offset_reference(+Ref0, +OX, +OY, -Ref)
+
+offset_reference(cell(S,X0,Y0), OffX, OffY, cell(S,X,Y)) :- !,
+	X is X0 + OffX,
+	Y is Y0 + OffY.
+offset_reference(cell_range(S,SX0,SY0,EX0,EY0), OffX, OffY,
+		 cell_range(S,SX,SY,EX,EY)) :- !,
+	SX is SX0 + OffX,
+	SY is SY0 + OffY,
+	EX is EX0 + OffX,
+	EY is EY0 + OffY.
+offset_reference(_, _, _, #('REF!')).
 
 %%	ods_eval_if_exists(+Cell, -Value, +Module) is semidet.
 %
@@ -1255,13 +1286,23 @@ eval('TRUE', @true).
 
 %%	eval_varargs(+Func, +Args, -Value) is semidet.
 
-eval_varargs('MAX', List, Value) :-
+eval_varargs('MAX', Args, Value) :-
+	(   Args = [List],		% MAX(DataSource)
+	    is_list(List)
+	->  true
+	;   List = Args			% MAX(A;B;...)
+	),
 	(   List \== []
 	->  include(number, List, Numbers),
 	    max_list(Numbers, Value)
 	;   Value = 0
 	).
-eval_varargs('MIN', List, Value) :-
+eval_varargs('MIN', Args, Value) :-
+	(   Args = [List],
+	    is_list(List)
+	->  true
+	;   List = Args
+	),
 	(   List \== []
 	->  include(number, List, Numbers),
 	    min_list(Numbers, Value)
