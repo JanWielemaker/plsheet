@@ -1149,7 +1149,7 @@ eval_function(Expr, Value, M) :-
 	;   Expr1 =.. [Func|Args],
 	    (   eval(Expr1, Value)
 	    ->  true
-	    ;   ods_warning(eval(Expr1)),
+	    ;   ods_error(eval(Expr1)),
 		Value = #('N/A')
 	    )
 	).
@@ -1465,6 +1465,10 @@ ods_warning(Term) :-
 	->  print_message(warning, ods(Term))
 	;   true
 	).
+
+ods_error(Term) :-
+	print_message(error, ods(Term)).
+
 
 :- multifile
 	prolog:message//1.
