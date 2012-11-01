@@ -25,6 +25,8 @@
 :- use_module(library(dcg/basics)).
 :- use_module(library(aggregate)).
 :- use_module(of_functions).
+:- use_module(bisect).
+
 :- set_prolog_flag(optimise, true).
 
 /** <module> Load Open Document Spreadsheets
@@ -1087,18 +1089,35 @@ eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
 	;   eval_function('VLOOKUP'(VExpr, DataSource, ColExpr), Value, M)
 	).
 eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :- !,
-	ods_eval(VExpr, V, M),		% TBD: binary search, get lastest <
-	(   DataSource = cell_range(Sheet, SX,SY, EX,EY)
-	->  (   ods_eval_typed(RowExpr, integer, Row, M),
-	        TY is SY+Row-1,
-	        TY =< EY,		% TBD: range error
-		between(SX, EX, X),
-		cell_value(Sheet, X, SY, V)
-	    ->  cell_value(Sheet, X, TY, Value)
-	    ;   Value = #('N/A')
+	ods_eval(VExpr, V, M),
+	(   DataSource = cell_range(Sheet, SX,SY, EX,EY),
+	    ods_eval_typed(RowExpr, integer, Row, M),
+	    Row \= #(_),
+	    TY is SY+Row-1,
+	    TY =< EY
+	->  (   bisect(range_vtest(V, Sheet, SY), SX, EX, TX)
+	    ->	cell_value(Sheet, TX, TY, Value)
+	    ;	Value = #('N/A')
 	    )
-	;   print_message(error, ods(unsupported_datasource, DataSource)),
+	;   print_message(error, ods(invalid_vlookup)),
 	    Value = #('N/A')
+	).
+eval_function('HLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
+	(   ods_eval(Sorted, @false, M)
+	->  ods_eval(VExpr, V, M),
+	    (	DataSource = cell_range(Sheet, SX,SY, EX,EY)
+	    ->	(   ods_eval_typed(ColExpr, integer, Column, M),
+		    TY is SY+Column-1,
+		    TY =< EY,		% TBD: range error
+		    between(SX, EX, X),
+		    cell_value(Sheet, X, SY, V)
+		->  cell_value(Sheet, X, TY, Value)
+		;   Value = #('N/A')
+		)
+	    ;	print_message(error, ods(unsupported_datasource, DataSource)),
+		Value = #('N/A')
+	    )
+	;   eval_function('HLOOKUP'(VExpr, DataSource, ColExpr), Value, M)
 	).
 eval_function('ISBLANK'(Expr), Value, M) :- !,
 	(   Expr = cell(Sheet,X,Y)
@@ -1295,17 +1314,16 @@ range_goal(Expr, _, fail, _) :-
 
 %%	range_vtest(+Value, +Sheet, +X, +Y) is semidet.
 %
-%	True if cell_value(Sheet,X,Y,V) and V  @< Value. Prolog standard
-%	order is fine because numbers < text   < logical and our logical
-%	is @true and @false, e.g. compound.
-%
-%
+%	True if cell_value(Sheet,X,Y,V) and V is before Value.
 
 range_vtest(Value, Sheet, X, Y) :-
 	cell_value(Sheet, X, Y, V2),
 	ods_before(V2, Value).
 
 %%	ods_before(+Value1, +Value2) is semidet.
+%
+%	True if Value1 is before Value2 in the spreadsheet order of
+%	terms.  Meaning numbers < text < logical, @false < @true.
 
 ods_before(@X, @Y) :- !,
 	ods_before_special(X,Y).
@@ -1313,10 +1331,14 @@ ods_before(N1, N2) :-
 	number(N1), number(N2),
 	N1 < N2.
 ods_before(V1, V2) :-
-	V1 @< V2.
+	V1 @< V2.			% @<: number < atom < compound
 
 ods_before_special(false, true).
 
+%%	same_type_condition(+Value, +Var, -Goal) is det.
+%
+%	True when Goal is a goal that  succeeds   if  Var is of the same
+%	type as Value.
 
 same_type_condition(Ref, V, number(V)) :-
 	number(Ref), !.
