@@ -1055,6 +1055,20 @@ eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	->  ods_eval(Then, Value, M)
 	;   ods_eval(Else, Value, M)
 	).
+eval_function('VLOOKUP'(VExpr, DataSource, ColExpr), Value, M) :- !,
+	ods_eval(VExpr, V, M),
+	(   DataSource = cell_range(Sheet, SX,SY, EX,EY),
+	    ods_eval_typed(ColExpr, integer, Column, M),
+	    Column \= #(_),
+	    TX is SX+Column-1,
+	    TX =< EX
+	->  (   bisect(range_vtest(V, Sheet, SX), SY, EY, TY)
+	    ->	cell_value(Sheet, TX, TY, Value)
+	    ;	Value = #('N/A')
+	    )
+	;   print_message(error, ods(invalid_vlookup)),
+	    Value = #('N/A')
+	).
 eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
 	(   ods_eval(Sorted, @false, M)
 	->  ods_eval(VExpr, V, M),
@@ -1070,7 +1084,7 @@ eval_function('VLOOKUP'(VExpr, DataSource, ColExpr, Sorted), Value, M) :- !,
 	    ;	print_message(error, ods(unsupported_datasource, DataSource)),
 		Value = #('N/A')
 	    )
-	;   print_message(error, ods(vlookup, sorted))
+	;   eval_function('VLOOKUP'(VExpr, DataSource, ColExpr), Value, M)
 	).
 eval_function('HLOOKUP'(VExpr, DataSource, RowExpr), Value, M) :- !,
 	ods_eval(VExpr, V, M),		% TBD: binary search, get lastest <
@@ -1278,6 +1292,31 @@ range_goal(cell_range(Sheet, SX,SY, EX,EY), V, Goal, M) :- !,
 	).
 range_goal(Expr, _, fail, _) :-
 	ods_warning(range_expected(Expr)).
+
+%%	range_vtest(+Value, +Sheet, +X, +Y) is semidet.
+%
+%	True if cell_value(Sheet,X,Y,V) and V  @< Value. Prolog standard
+%	order is fine because numbers < text   < logical and our logical
+%	is @true and @false, e.g. compound.
+%
+%
+
+range_vtest(Value, Sheet, X, Y) :-
+	cell_value(Sheet, X, Y, V2),
+	ods_before(V2, Value).
+
+%%	ods_before(+Value1, +Value2) is semidet.
+
+ods_before(@X, @Y) :- !,
+	ods_before_special(X,Y).
+ods_before(N1, N2) :-
+	number(N1), number(N2),
+	N1 < N2.
+ods_before(V1, V2) :-
+	V1 @< V2.
+
+ods_before_special(false, true).
+
 
 same_type_condition(Ref, V, number(V)) :-
 	number(Ref), !.
