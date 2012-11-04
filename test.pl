@@ -125,9 +125,11 @@ p(M:Sheet, X,Y) :-
 	user:message_property/2.
 
 user:portray(cell(Sheet,X,Y)) :-
+	integer(X),
 	column_name(X, C),
 	format('~q.~w~w', [Sheet, C, Y]).
 user:portray(cell_range(Sheet,SX,SY,EX,EY)) :-
+	integer(SX), integer(EX),
 	column_name(SX, CS),
 	column_name(EX, CE),
 	format('[~q.~w~w:~w~w]', [Sheet, CS,SY,CE,EY]).
