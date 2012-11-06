@@ -11,7 +11,12 @@
 
 	    cell_class/4,		% :Sheet, ?SX, ?SY, ?Class
 
-	    sheet_bb/5			% :Sheet, SX,SY, EX,SY
+	    sheet_bb/5,			% :Sheet, SX,SY, EX,SY
+
+	    ds_sheet/2,			% +DS, -Sheet
+
+	    ds_intersection/3,		% +DS1, +DS2, -DS
+	    ds_union/3			% +DS1, +DS2, -DS
 	  ]).
 :- use_module(ods_table).
 :- use_module(library(apply)).
@@ -37,6 +42,20 @@
 
 @tbd	Use constraints for types?  E.g., allow for float or empty
 */
+
+%%	anchor(:DataSource, ?Type) is nondet.
+%
+%	True when the top-level of DataSource is an anchor of Type. This
+%	implies it is a cell the given Type and the cells left and above
+%	it are of different types.
+%
+%	The anchor/2 predicate  is  used   to  generate  candidates  for
+%	creating larger units of cells.  For   example,  to generate all
+%	blocks of floats, use this:
+%
+%	  ==
+%	  ?- anchor(D, float), once(block(D, float)).
+%	  ==
 
 anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
 	cell_class(M:Sheet, SX,SY, Type),
@@ -174,3 +193,48 @@ sheet_bb(M, Sheet, SX,SY,EX,EY) :-
 
 cell_exists(M:Sheet,X,Y) :-
 	cell(M:Sheet, X,Y, _,_,_,_,_).
+
+
+		 /*******************************
+		 *	 DATASOURCE LOGIC	*
+		 *******************************/
+
+%%	ds_sheet(+DS, -Sheet) is det.
+%
+%	True when DS is on Sheet.
+
+ds_sheet(cell_range(Sheet, _,_, _,_), Sheet).
+
+
+%%	ds_intersection(+DS1, +DS2, -DS) is semidet.
+%
+%	True when the intersection of DS1 and DS2 is DS.  Fails if the
+%	two do not intersect.
+
+ds_intersection(cell_range(Sheet, SX1,SY1, EX1,EY1),
+		cell_range(Sheet, SX2,SY2, EX2,EY2),
+		cell_range(Sheet, SX,SY, EX,EY)) :-
+	range_intersect(SX1,EX1, SX2,EX2, SX,EX),
+	range_intersect(SY1,EY1, SY2,EY2, SY,EY).
+
+range_intersect(S1,E1, S2,E2, S,E) :-
+	S is max(S1,S2),
+	E is min(E1,E2),
+	S =< E.
+
+
+%%	ds_union(+DS1, +DS2, -DS) is det.
+%
+%	True when the union of DS1 and DS2 is DS.
+
+ds_union(cell_range(Sheet, SX1,SY1, EX1,EY1),
+	 cell_range(Sheet, SX2,SY2, EX2,EY2),
+	 cell_range(Sheet, SX,SY, EX,EY)) :-
+	range_union(SX1,EX1, SX2,EX2, SX,EX),
+	range_union(SY1,EY1, SY2,EY2, SY,EY).
+
+range_union(S1,E1, S2,E2, S,E) :-
+	S is min(S1,S2),
+	E is max(E1,E2).
+
+
