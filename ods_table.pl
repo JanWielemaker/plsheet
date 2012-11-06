@@ -12,6 +12,7 @@
 	    cell_formula/4,		% :Sheet, ?X, ?Y, ?Formula
 	    cell_eval/4,		% :Sheet, ?X, ?Y, -Value
 	    cell_style/4,		% :Sheet, ?X, ?Y, ?Property
+	    cell/8,			% :Sheet, ?X, ?Y, ?V, ?T, ?F, ?S, ?A
 
 	    column_name/2,		% ?Index, ?Name
 	    ods_DOM/3			% :Source, -DOM, +Options
@@ -82,7 +83,8 @@ Values are represented using the following conventions:
 	cell_type(:, ?, ?, ?),
 	cell_formula(:, ?, ?, ?),
 	cell_eval(:, ?, ?, ?),
-	cell_style(:, ?, ?, ?).
+	cell_style(:, ?, ?, ?),
+	cell(:, ?, ?, ?, ?, ?, ?, ?).
 
 :- dynamic
 	ods_spreadsheet/2.		% URL, Module
@@ -924,6 +926,17 @@ style_property_level(font_size(_),	cell).
 style_property_level(cell_color(_),	cell).
 style_property_level(name(_),		cell).
 
+%%	cell(:Sheet, ?X, ?Y, ?Value, ?Type, ?Formula, ?Style, ?Annotations)
+%
+%	Query raw cells.
+
+cell(M:Sheet, X, Y, Value, Type, Formula, Style, Annot) :-
+	(   ground(cell(Sheet,X,Y))
+	->  cell_id(X,Y,Id),
+	    once(M:cell(Sheet, Id, Value, Type, Formula, Style, Annot))
+        ;   M:cell(Sheet, Id, Value, Type, Formula, Style, Annot),
+	    cell_id(X,Y,Id)
+	).
 
 
 		 /*******************************
@@ -941,14 +954,10 @@ ods_eval(cell(Sheet,X,Y), Value, Module) :- !,
 	cell_value(Sheet,X,Y, _Type, Value, Module).
 ods_eval(cell_range(Sheet, SX,SY, EX,EY), List, M) :- !,
 	(   SX =:= EX
-	->  findall(V, (between(SY,EY,Y),
-			ods_eval_if_exists(cell(Sheet,SX,Y), V, M)),
-		    List)
+	->  col_array(Sheet, SX, SY, EY, List, M)
 	;   SY =:= EY
-	->  findall(V, (between(SX,EX,X),
-			ods_eval_if_exists(cell(Sheet,X,SY), V, M)),
-		    List)
-	;   ods_warning(eval(cell_range(Sheet, SX,SY, EX,EY)))
+	->  row_array(Sheet, SY, SX, EX, List, M)
+	;   array(Sheet, SX,SY, EX,EY, List, M)
 	).
 ods_eval(Ref1:Ref2, Value, Module) :- !,
 	eval_reference(Ref1, cell(S,SX,SY), Module),
@@ -1073,14 +1082,51 @@ offset_reference(cell_range(S,SX0,SY0,EX0,EY0), OffX, OffY,
 	EY is EY0 + OffY.
 offset_reference(_, _, _, #('REF!')).
 
-%%	ods_eval_if_exists(+Cell, -Value, +Module) is semidet.
+%%	col_array(+Sheet, +X, +SY, +EY, -Array, +Module) is det.
 %
-%	Extract value for a cell if it exists.  Used for 'SUM'().
+%	Produce an array of values for a column, represented as a list.
 
-ods_eval_if_exists(cell(Sheet,X,Y), Value, M) :-
-	cell_id(X,Y,Id),
-	M:cell(Sheet, Id, Value, _Type, _, _, _), !,
-	Value \== @empty.
+col_array(Sheet, X, Y0, Y, [V0|VL], M) :-
+	Y0 =< Y, !,
+	cell_id(X,Y0,Id),
+	(   M:cell(Sheet, Id, V0, _Type, _, _, _)
+	->  true
+	;   V0 = @empty
+	),
+	Y1 is Y0+1,
+	col_array(Sheet, X, Y1, Y, VL, M).
+col_array(_, _, _, _, [], _).
+
+
+%%	row_array(+Sheet, +Y, +SX, +EX, -Array, +Module) is det.
+%
+%	Produce an array of values for a row, represented as a list.
+
+row_array(Sheet, Y, X0, X, [V0|VL], M) :-
+	X0 =< X, !,
+	cell_id(X0,Y,Id),
+	(   M:cell(Sheet, Id, V0, _Type, _, _, _)
+	->  true
+	;   V0 = @empty
+	),
+	X1 is X0+1,
+	row_array(Sheet, Y, X1, X, VL, M).
+row_array(_, _, _, _, [], _).
+
+%%	array(+Sheet, +SX, +SY, +EX, +EY, -Array, +Module) is det.
+%
+%	Array is a two-dimenional list of values in the range SXSY:EXEY.
+
+array(Sheet, SX, Y0, EX, Y, [R1|RL], Module) :-
+	Y0 =< Y, !,
+	row_array(Sheet, Y0, SX, EX, R1, Module),
+	Y1 is Y0+1,
+	array(Sheet, SX, Y1, EX, Y, RL, Module).
+array(_, _, _, _, _, [], _).
+
+
+
+%%	eval_function(+FunctionTerm, -Value, +Module)
 
 eval_function('IF'(Cond, Then, Else), Value, M) :- !,
 	ods_eval(Cond, VC, M),
@@ -1223,11 +1269,11 @@ ods_evalm(M, Expr, Value) :-
 %%	eval(+Expr, -Value) is det.
 
 eval('SUM'(List), Value) :-
-	sum_list(List, Value).
+	ods_sum_list(List, Value).
 eval('AVERAGE'(List), Value) :-
-	length(List, Len),
+	length(List, Len),		% should length include @empty?
 	(   Len > 0
-	->  sum_list(List, Sum),
+	->  ods_sum_list(List, Sum),
 	    Value is Sum/Len
 	;   Value = #('N/A')
 	).
@@ -1428,8 +1474,6 @@ ods_equal(N1, N2) :-
 	number(N1), number(N2), !,
 	N1 =:= N2.
 
-
-
 %%	same_type_condition(+Value, +Var, -Goal) is det.
 %
 %	True when Goal is a goal that  succeeds   if  Var is of the same
@@ -1441,6 +1485,25 @@ same_type_condition(Ref, V, atom(V)) :-
 	atom(Ref), !.
 same_type_condition(Ref, _, true) :-
 	ods_warning(same_type_condition(Ref)).
+
+
+%%	ods_sum_list(+List, -Sum) is det.
+
+ods_sum_list(List, Sum) :-
+	ods_sum_list(List, 0, Sum).
+
+ods_sum_list([], Sum, Sum).
+ods_sum_list([H|T], Sum0, Sum) :-
+	ods_add(H, Sum0, Sum1),
+	ods_sum_list(T, Sum1, Sum).
+
+ods_add(N1, N2, N) :-
+	number(N1),
+	number(N2), !,
+	N is N1 + N2.
+ods_add(@empty, Sum, Sum) :- !.
+ods_add(_, #(E), #(E)) :- !.
+ods_add(#(E), _, #(E)) :- !.
 
 
 		 /*******************************
