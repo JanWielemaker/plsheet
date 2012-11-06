@@ -1,11 +1,15 @@
 :- module(recognise,
-	  [ block/2,			% DataSource, Type
+	  [ anchor/2,			% DataSource, Type
+
+	    block/2,			% DataSource, Type
 	    row/2,			% DataSource, Type
 	    col/2,			% DataSource, Type
 
 	    row/6,			% Sheet, SX,SY, EX,SY, Type
 	    col/6,			% Sheet, SX,SY, EX,SY, Type
 	    block/6,			% Sheet, SX,SY, EX,SY, Type
+
+	    cell_class/4,		% :Sheet, ?SX, ?SY, ?Class
 
 	    sheet_bb/5			% :Sheet, SX,SY, EX,SY
 	  ]).
@@ -14,6 +18,18 @@
 :- use_module(library(lists)).
 
 :- meta_predicate
+	anchor(:, ?),
+
+	block(:,?),
+	row(:,?),
+	col(:,?),
+
+	block(:,?,?,?,?,?),
+	row(:,?,?,?,?,?),
+	col(:,?,?,?,?,?),
+
+	cell_class(:, ?, ?, ?),
+
 	sheet_bb(:,?,?,?,?).
 
 
@@ -22,16 +38,29 @@
 @tbd	Use constraints for types?  E.g., allow for float or empty
 */
 
+anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
+	cell_class(M:Sheet, SX,SY, Type),
+	(   SX =:= 0
+	->  true
+	;   LX is SX-1,
+	    cell_class(M:Sheet, LX,SY, TLeft), TLeft \== Type
+	),
+	(   SY =:= 0
+	->  true
+	;   AY is SY-1,
+	    cell_class(M:Sheet, SX,AY, TAbove), TAbove \== Type
+	).
+
 %%	block(?DataSource, ?Type) is nondet.
 
-block(cell_range(Sheet, SX,SY, EX,EY), Type) :-
-	block(Sheet, SX,SY, EX,EY, Type).
+block(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
+	block(M:Sheet, SX,SY, EX,EY, Type).
 
-row(cell_range(Sheet, SX,SY, EX,EY), Type) :-
-	row(Sheet, SX,SY, EX,EY, Type).
+row(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
+	row(M:Sheet, SX,SY, EX,EY, Type).
 
-col(cell_range(Sheet, SX,SY, EX,EY), Type) :-
-	col(Sheet, SX,SY, EX,EY, Type).
+col(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
+	col(M:Sheet, SX,SY, EX,EY, Type).
 
 
 %%	block(?Sheet, ?SX,?SY, ?EX, ?EY, ?Type) is nondet.
@@ -90,19 +119,20 @@ col2(Sheet, SX,SY, SX,EY, Type) :-
 
 cell_class(Sheet, X,Y, Type) :-
 	ground(cell(Sheet,X,Y)), !,
-	(   cell_type(Sheet, X,Y, Type)
-	->  true
+	(   cell_type(Sheet, X,Y, Type0)
+	->  Type = Type0
 	;   Type = empty
 	->  sheet_bb(Sheet, MinX,MinY,MaxX,MaxY),
 	    between(MinX, MaxX, X),
-	    between(MinY, MaxY, Y)
+	    between(MinY, MaxY, Y),
+	    \+ cell_type(Sheet, X,Y, _)
 	).
 cell_class(Sheet, X,Y, Type) :-
 	Type == empty, !,
 	sheet_bb(Sheet, MinX,MinY,MaxX,MaxY),
 	between(MinX, MaxX, X),
 	between(MinY, MaxY, Y),
-	\+ cell_type(Sheet, X,Y, Type).
+	\+ cell_type(Sheet, X,Y, _).
 cell_class(Sheet, X,Y, Type) :-
 	cell_type(Sheet, X,Y, Type).
 
