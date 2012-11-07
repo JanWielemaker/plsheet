@@ -18,6 +18,7 @@
 
 	    ds_intersection/3,		% +DS1, +DS2, -DS
 	    ds_union/3,			% +DS1, +DS2, -DS
+	    ds_union/2,			% +DSList, -DS
 
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
@@ -241,6 +242,20 @@ ds_union(cell_range(Sheet, SX1,SY1, EX1,EY1),
 range_union(S1,E1, S2,E2, S,E) :-
 	S is min(S1,S2),
 	E is max(E1,E2).
+
+
+%%	ds_union(+DSList, -DS) is det.
+%
+%	True when DS is the union of all datasources
+
+ds_union([], cell_range(_, 0,0,0,0)).
+ds_union([H|T], Union) :-
+	ds_union_list(T, H, Union).
+
+ds_union_list([], DS, DS).
+ds_union_list([H|T], DS0, DS) :-
+	ds_union(H, DS0, DS1),
+	ds_union_list(T, DS1, DS).
 
 
 %%	ds_size(+DS, -Columns, -Rows) is det.
