@@ -3,7 +3,7 @@
 	  ]).
 :- use_module(recognise).
 
-%%	table(+DataDS, ?SupportDS) is nodet.
+%%	table(+DataDS, ?SupportDS) is nondet.
 %
 %	True when there is a table  with   DataDS  and a list of support
 %	datasources.
@@ -12,8 +12,8 @@ table(DataDS, TitleDS) :-
 	ds_size(DataDS, Cols, Rows),
 	top_rows(DataDS, -1, TitleDS, Left),
 	left_columns(DataDS, -1, Left, Right),
-	right_columns(DataDS, Cols+1, Right, Bottom),
-	bottom_rows(DataDS, Rows+1, Bottom, []).
+	right_columns(DataDS, Cols, Right, Bottom),
+	bottom_rows(DataDS, Rows, Bottom, []).
 
 %%	top_rows(+DS, +StartIndex, -Rows, ?Tail) is nondet.
 %%	bottom_rows(+DS, +StartIndex, -Rows, ?Tail) is nondet.
