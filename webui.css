@@ -1,0 +1,8 @@
+table.spreadsheet
+{ border-collapse:collapse;
+}
+
+table.spreadsheet td
+{ border: 1px solid black;
+}
+
