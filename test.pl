@@ -1,5 +1,11 @@
 :- use_module(ods_table).
+:- use_module(recognise).
+:- use_module(table).
+:- use_module(webui).
 :- use_module(library(debug)).
+
+:- initialization
+	server(3030).
 
 file('E-Design WindEnergie.ods').
 sheet('WindopLand').
