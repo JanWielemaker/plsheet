@@ -3,6 +3,7 @@
 	    table/2			% +Data, -Support
 	  ]).
 :- use_module(recognise).
+:- use_module(datasource).
 
 
 %%	tables(?Sheet, +Type, -Tables) is det.
