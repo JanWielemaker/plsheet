@@ -1,7 +1,8 @@
 :- module(webui,
 	  [ server/1,			% ?Port
 	    show/1,			% +Data
-	    show/2			% +Data, +Options
+	    show/2,			% +Data, +Options
+	    clear/0
 	  ]).
 :- use_module(library(http/thread_httpd)).
 :- use_module(dialog/http_dialog).
@@ -29,6 +30,9 @@ show(Data) :-
 show(Data, Options) :-
 	log_html(log, \webshow(Data), Options).
 
+clear :-
+	log_html(log, '', [clear(true)]).
+
 webshow(Data) -->
 	html(h4('Showing ~p'-[Data])),
 	web_portray(Data).
@@ -55,6 +59,12 @@ table_row(Sheet, Y, SX,EX) -->
 	table_row(Sheet, Y, X2,EX).
 table_row(_, _, _,_) --> [].
 
+table_cell(Sheet, SX, SY) -->
+	{ cell_type(Sheet, SX,SY,percentage),
+	  cell_value(Sheet, SX,SY, Value),
+	  Val is Value*100
+	}, !,
+	html(td([Val,'%'])).
 table_cell(Sheet, SX, SY) -->
 	{ cell_value(Sheet, SX,SY, Value)
 	}, !,

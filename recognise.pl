@@ -9,6 +9,7 @@
 	    col/6,			% Sheet, SX,SY, EX,SY, Type
 	    block/6,			% Sheet, SX,SY, EX,SY, Type
 
+	    cell_class/1,		% ?Class
 	    cell_class/4,		% :Sheet, ?SX, ?SY, ?Class
 
 	    sheet_bb/5,			% :Sheet, SX,SY, EX,SY
@@ -131,6 +132,11 @@ col2(Sheet, SX,SY, SX,EY, Type) :-
 		 /*******************************
 		 *	   BLANK PARTS		*
 		 *******************************/
+
+cell_class(float).
+cell_class(percentage).
+cell_class(string).
+
 
 %%	cell_class(?Sheet, ?X,?Y, ?Class) is	nondet.
 %

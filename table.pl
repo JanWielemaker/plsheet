@@ -1,7 +1,26 @@
 :- module(table,
-	  [ table/2			% +Data, -Support
+	  [ tables/3,			% ?Sheet, +Type, -Tables
+	    table/2			% +Data, -Support
 	  ]).
 :- use_module(recognise).
+
+
+%%	tables(?Sheet, +Type, -Tables) is det.
+%
+%	Make an initial guess  at  all  tables.   Table  is  a  list  of
+%	table(Data, Headers,Union).
+
+tables(Sheet, Type, Tables) :-
+	findall(table(DS,Headers,Union),
+		(   ds_sheet(DS, Sheet),
+		    cell_class(Type),
+		    anchor(DS, Type),
+		    once((block(DS, Type),
+			  table(DS, Headers))),
+		    ds_union([DS|Headers], Union)
+		),
+		Tables).
+
 
 %%	table(+DataDS, ?SupportDS) is nondet.
 %
