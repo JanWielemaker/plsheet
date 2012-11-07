@@ -86,7 +86,10 @@ table_cell(Sheet, SX, SY) -->
 table_cell(Sheet, SX, SY) -->
 	{ cell_value(Sheet, SX,SY, Value)
 	}, !,
-	html(td('~q'-[Value])).
+	(   { atomic(Value) }
+	->  html(td(Value))
+	;   html(td('~q'-[Value]))
+	).
 table_cell(_, _, _) -->
 	html(td(class(empty), [])).
 
