@@ -14,9 +14,15 @@
 	    sheet_bb/5,			% :Sheet, SX,SY, EX,SY
 
 	    ds_sheet/2,			% +DS, -Sheet
+	    ds_size/3,			% +DS, -Columns, -Rows
 
 	    ds_intersection/3,		% +DS1, +DS2, -DS
-	    ds_union/3			% +DS1, +DS2, -DS
+	    ds_union/3,			% +DS1, +DS2, -DS
+
+	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
+	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
+	    ds_column_slice/3,		% +DS1, ?Offset, ?Slice
+	    ds_unbounded_column_slice/3	% +DS1, +Offset, ?Slice
 	  ]).
 :- use_module(ods_table).
 :- use_module(library(apply)).
@@ -86,13 +92,12 @@ col(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
 
 block(Sheet, SX,SY, EX,EY, Type) :-
 	row(Sheet, SX,SY, EX,SY, Type),
-	Y2 is SY+1,
-	block2(Sheet, SX,Y2,EX,EY, Type).
+	block2(Sheet, SX,SY,EX,EY, Type).
 
 block2(Sheet, SX,SY,EX,EY, Type) :-
-	row(Sheet, SX,SY, EX,SY, Type),
-	Y2 is SY+1,
-	(   block2(Sheet, SX,Y2,EX,EY, Type)
+	(   Y2 is SY+1,
+	    row(Sheet, SX,Y2, EX,Y2, Type),
+	    block2(Sheet, SX,Y2,EX,EY, Type)
 	;   EY=SY
 	).
 
@@ -238,3 +243,54 @@ range_union(S1,E1, S2,E2, S,E) :-
 	E is max(E1,E2).
 
 
+%%	ds_size(+DS, -Columns, -Rows) is det.
+%
+%	True when Columns and Rows represent the size of a datasource
+
+ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
+	Columns is EX-SX+1,
+	Rows is EY-SY+1.
+
+
+%%	ds_row_slice(+DS, ?Offset, ?Slice) is det.
+%
+%	True when Slice is a row from   DS at offset Offset. Offsets are
+%	0-based.
+
+ds_row_slice(cell_range(Sheet, SX,SY, EX,EY), Offset,
+	     cell_range(Sheet, SX,RY, EX,RY)) :-
+	H is EY-SY,
+	between(0,H,Offset),
+	RY is SY+Offset.
+
+
+%%	ds_unbounded_row_slice(+DS, +Offset, -Slice) is det.
+%
+%	True when Slice is a row from   DS at offset Offset. Offsets are
+%	0-based. It is allowed for Slice to  be outside the range of the
+%	datasouce.
+
+ds_unbounded_row_slice(cell_range(Sheet, SX,SY, EX,_), Offset,
+	     cell_range(Sheet, SX,RY, EX,RY)) :-
+	RY is SY+Offset.
+
+%%	ds_column_slice(+DS, ?Offset, ?Slice) is det.
+%
+%	True when Slice is a column from   DS  at offset Offset. Offsets
+%	are 0-based.
+
+ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset,
+		cell_range(Sheet, CX,SY, CX,EY)) :-
+	W is EX-SX,
+	between(0,W,Offset),
+	CX is SX+Offset.
+
+%%	ds_unbounded_column_slice(+DS, +Offset, -Slice) is det.
+%
+%	True when Slice is a column from   DS at offset Offset. Offsets are
+%	0-based. It is allowed for Slice to  be outside the range of the
+%	datasouce.
+
+ds_unbounded_column_slice(cell_range(Sheet, SX,SY,  _,EY), Offset,
+			  cell_range(Sheet, CX,SY, CX,EY)) :-
+	CX is SX+Offset.
