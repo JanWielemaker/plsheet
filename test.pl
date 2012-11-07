@@ -5,7 +5,13 @@
 :- use_module(library(debug)).
 
 :- initialization
-	server(3030).
+	start_server.
+
+start_server :-
+	server(Port),
+	format(atom(URL), 'http://localhost:~d/', [Port]),
+	www_open_url(URL).
+
 
 file('E-Design WindEnergie.ods').
 sheet('WindopLand').

@@ -2,9 +2,12 @@
 	  [ ds_sheet/2,			% +DS, -Sheet
 	    ds_size/3,			% +DS, -Columns, -Rows
 
+	    ds_inside/3,		% +DS, ?X, ?Y
+
 	    ds_intersection/3,		% +DS1, +DS2, -DS
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
+	    ds_intersections/2,		% +DSList, -Pairs
 
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
@@ -13,7 +16,7 @@
 	  ]).
 
 		 /*******************************
-		 *	 DATASOURCE LOGIC	*
+		 *	 SIMPLE PROPERTIES	*
 		 *******************************/
 
 %%	ds_sheet(+DS, -Sheet) is det.
@@ -22,6 +25,31 @@
 
 ds_sheet(cell_range(Sheet, _,_, _,_), Sheet).
 
+%%	ds_size(+DS, -Columns, -Rows) is det.
+%
+%	True when Columns and Rows represent the size of a datasource
+
+ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
+	Columns is EX-SX+1,
+	Rows is EY-SY+1.
+
+
+		 /*******************************
+		 *	    COORDINATES		*
+		 *******************************/
+
+%%	ds_inside(+DS, ?X, ?Y) is nondet.
+%
+%	True when X,Y is inside the datasource
+
+ds_inside(cell_range(_Sheet, SX,SY, EX,EY), X, Y) :-
+	between(SY, EY, Y),
+	between(SX, EX, X).
+
+
+		 /*******************************
+		 *	     SET LOGIC		*
+		 *******************************/
 
 %%	ds_intersection(+DS1, +DS2, -DS) is semidet.
 %
@@ -69,14 +97,28 @@ ds_union_list([H|T], DS0, DS) :-
 	ds_union_list(T, DS1, DS).
 
 
-%%	ds_size(+DS, -Columns, -Rows) is det.
+%%	ds_intersections(+ListOfDS, -Pairs) is semidet.
 %
-%	True when Columns and Rows represent the size of a datasource
+%	True when Pairs is a non-empty list of pairs of datasources with
+%	a non-empty intersection.
+%
+%	@tbd	Can be more efficient
 
-ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
-	Columns is EX-SX+1,
-	Rows is EY-SY+1.
+ds_intersections(ListOfDS, Pairs) :-
+	findall(A-B,
+		( member(A,ListOfDS),
+		  member(B,ListOfDS),
+		  A@>B,
+		  ds_intersection(A,B,_)
+		),
+		Pairs),
+	Pairs \== [].
 
+
+
+		 /*******************************
+		 *	      SLICING		*
+		 *******************************/
 
 %%	ds_row_slice(+DS, ?Offset, ?Slice) is det.
 %

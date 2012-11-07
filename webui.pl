@@ -38,10 +38,28 @@ webshow(Data) -->
 	web_portray(Data).
 
 web_portray(cell_range(Sheet, SX,SY, EX,EY)) -->
+	{ integer(SX), integer(SY), integer(EX), integer(EY) }, !,
 	html(table(class(spreadsheet),
 		   \table_rows(Sheet, SX,SY, EX,EY))), !.
+web_portray(cell(Sheet,X,Y)) -->
+	web_portray(cell_range(Sheet, X,Y, X,Y)).
+web_portray(table(_,_,Union)) -->
+	web_portray(Union).
+web_portray(List) -->
+	{ is_list(List), !,
+	  length(List, Len)
+	},
+	html(h2('List of ~D objects'-[Len])),
+	web_portray_list(List).
 web_portray(_) -->
 	html(p('No rules to portray')).
+
+web_portray_list([]) --> "".
+web_portray_list([H|T]) -->
+	webshow(H),
+	web_portray_list(T).
+
+%%	table_rows(+Sheet, +SX,+SY, +EX,+EY)// is det.
 
 table_rows(Sheet, SX,SY, EX,EY) -->
 	{ SY =< EY, !,
@@ -68,7 +86,7 @@ table_cell(Sheet, SX, SY) -->
 table_cell(Sheet, SX, SY) -->
 	{ cell_value(Sheet, SX,SY, Value)
 	}, !,
-	html(td(Value)).
+	html(td('~q'-[Value])).
 table_cell(_, _, _) -->
 	html(td(class(empty), [])).
 
