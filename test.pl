@@ -43,6 +43,14 @@ load(File) :-
 		 *	     SEGMENTING		*
 		 *******************************/
 
+%%	segment
+%
+%	Segment the tables.  First try.  To show the result, run
+%
+%	   ==
+%	   ?- sheet(S,_), clear, show(sheet(S)).
+%	   ==
+
 segment :-
 	clean_data,
 	assert_tables(_Sheet1,_Type),
