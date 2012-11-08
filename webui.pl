@@ -47,7 +47,9 @@ web_portray(Var) -->
 web_portray(cell_range(Sheet, SX,SY, EX,EY)) -->
 	{ integer(SX), integer(SY), integer(EX), integer(EY) }, !,
 	html(table(class(spreadsheet),
-		   \table_rows(Sheet, SX,SY, EX,EY))), !.
+		   [ tr([td([])|\column_headers(SX,EX)])
+		   | \table_rows(Sheet, SX,SY, EX,EY)
+		   ])).
 web_portray(cell(Sheet,X,Y)) -->
 	web_portray(cell_range(Sheet, X,Y, X,Y)).
 web_portray(table(_Id,_Type,_DS,_Headers,Union)) -->
@@ -66,8 +68,22 @@ web_portray(_) -->
 
 web_portray_list([]) --> "".
 web_portray_list([H|T]) -->
-	webshow(H),
+	webshow(H), !,
 	web_portray_list(T).
+
+%%	column_headers(SX, EX)// is det.
+%
+%	Produce the column headers
+
+column_headers(SX,EX) -->
+	{ SX =< EX,
+	  column_name(SX, Name),
+	  X2 is SX+1
+	},
+	html(th(class(colname), Name)),
+	column_headers(X2, EX).
+column_headers(_, _) --> [].
+
 
 %%	table_rows(+Sheet, +SX,+SY, +EX,+EY)// is det.
 
@@ -75,7 +91,9 @@ table_rows(Sheet, SX,SY, EX,EY) -->
 	{ SY =< EY, !,
 	  Y2 is SY+1
 	},
-	html(tr(\table_row(Sheet, SY, SX, EX))),
+	html(tr([ th(class(rowname),SY)
+		| \table_row(Sheet, SY, SX, EX)
+		])),
 	table_rows(Sheet, SX,Y2, EX,EY).
 table_rows(_, _,_, _,_) --> [].
 

@@ -22,3 +22,8 @@ table.spreadsheet td.derived
   //font-weight:bold;
 }
 
+table.spreadsheet th.colname,th.rowname
+{ background-color:black;
+  color:white;
+}
+
