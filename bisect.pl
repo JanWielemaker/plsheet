@@ -21,6 +21,9 @@ bisect(Test, _, To, _) :-
 bisect(Test, From, To, Last) :-
 	bsect(Test, From, To, Last).
 
+:- meta_predicate
+	bsect(1, +, +, -).
+
 bsect(Test, From, To, Last) :-
 	Mid is (From+To)//2,
 	(   call(Test, Mid)

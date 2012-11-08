@@ -7,11 +7,16 @@
 :- initialization
 	start_server.
 
+:- dynamic
+	server_url/1.
+
+start_server :-
+	server_url(_), !.
 start_server :-
 	server(Port),
 	format(atom(URL), 'http://localhost:~d/', [Port]),
+	assertz(server_url(URL)),
 	www_open_url(URL).
-
 
 file('E-Design WindEnergie.ods').
 sheet('WindopLand').
@@ -38,6 +43,9 @@ test(Sheet, X,Y) :-
 :- dynamic
 	passed/3,
 	failed/4.
+
+:- meta_predicate
+	test(:, ?, ?, 0).
 
 test(Sheet, X,Y, Cont) :-
 	clean_stats,

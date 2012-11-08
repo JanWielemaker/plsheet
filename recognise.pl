@@ -12,9 +12,10 @@
 	    cell_class/1,		% ?Class
 	    cell_class/4,		% :Sheet, ?SX, ?SY, ?Class
 
-	    sheet_bb/5			% :Sheet, SX,SY, EX,SY
+	    sheet_bb/2			% :Sheet, -DataSource
 	  ]).
 :- use_module(ods_table).
+:- use_module(datasource).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 
@@ -141,31 +142,29 @@ cell_class(Sheet, X,Y, Type) :-
 	(   cell_type(Sheet, X,Y, Type0)
 	->  Type = Type0
 	;   Type = empty
-	->  sheet_bb(Sheet, MinX,MinY,MaxX,MaxY),
-	    between(MinX, MaxX, X),
-	    between(MinY, MaxY, Y),
+	->  sheet_bb(Sheet, SheetDS),
+	    ds_inside(SheetDS, X, Y),
 	    \+ cell_type(Sheet, X,Y, _)
 	).
 cell_class(Sheet, X,Y, Type) :-
 	Type == empty, !,
-	sheet_bb(Sheet, MinX,MinY,MaxX,MaxY),
-	between(MinX, MaxX, X),
-	between(MinY, MaxY, Y),
+	sheet_bb(Sheet, SheetDS),
+	ds_inside(SheetDS, X, Y),
 	\+ cell_type(Sheet, X,Y, _).
 cell_class(Sheet, X,Y, Type) :-
 	cell_type(Sheet, X,Y, Type).
 
 
-%%	sheet_bb(:Sheet, ?SX,?SY, ?EX,?EY) is nondet.
+%%	sheet_bb(:Sheet, ?DS) is nondet.
 %
-%	True if Sheet is covered by the given bounding box.  Note that
-%	SX and SY may be 0.  Fails of the sheet is empty.
+%	True if DS is a datasource that   describes  all cells in Sheet.
+%	Fails of the sheet is empty.
 
 :- dynamic
 	sheet_bb_cache/6,
 	sheet_bb_cached/2.
 
-sheet_bb(M:Sheet, SX,SY,EX,EY) :-
+sheet_bb(M:Sheet, cell_range(Sheet,SX,SY,EX,EY)) :-
 	M:sheet(Sheet, _),
 	(   sheet_bb_cached(M, Sheet)
 	->  sheet_bb_cache(M, Sheet, SX,SY,EX,EY)
@@ -181,15 +180,11 @@ sheet_bb(M, Sheet, SX,SY,EX,EY) :-
 	M:sheet(Sheet, _),
 	findall(X-Y, cell_exists(M:Sheet, X,Y), Pairs),
 	maplist(arg(1), Pairs, AtCol),
-	min_list(AtCol, MinX),
-	max_list(AtCol, MaxX),
+	min_list(AtCol, SX),
+	max_list(AtCol, EX),
 	maplist(arg(2), Pairs, AtRow),
-	min_list(AtRow, MinY),
-	max_list(AtRow, MaxY),
-	SX is MinX - 1,
-	SY is MinY - 1,
-	EX is MaxX + 1,
-	EY is MaxY + 1.
+	min_list(AtRow, SY),
+	max_list(AtRow, EY).
 
 cell_exists(M:Sheet,X,Y) :-
 	cell(M:Sheet, X,Y, _,_,_,_,_).

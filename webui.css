@@ -1,8 +1,24 @@
+/* See http://www.w3schools.com/css/css_table.asp
+*/
+
 table.spreadsheet
 { border-collapse:collapse;
 }
 
 table.spreadsheet td
 { border: 1px solid black;
+}
+
+table.spreadsheet td.intable
+{ background-color:#a8ffcc;
+}
+
+table.spreadsheet td.float,td.percentage
+{ text-align:right;
+}
+
+table.spreadsheet td.derived
+{ color:blue;
+  //font-weight:bold;
 }
 

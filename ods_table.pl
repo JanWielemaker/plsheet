@@ -17,6 +17,8 @@
 	    column_name/2,		% ?Index, ?Name
 	    ods_DOM/3,			% :Source, -DOM, +Options
 
+	    cell_id/3,			% ?X, ?Y, ?Id
+
 	    sheet_name_need_quotes/1,	% +SheetName
 	    ods_reference//2		% -Expr, +Table
 	  ]).

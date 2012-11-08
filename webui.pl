@@ -9,6 +9,8 @@
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/html_head)).
 :- use_module(library(http/html_write)).
+:- use_module(table).
+:- use_module(recognise).
 
 :- http_handler(root(.), home, []).
 :- http_handler(root('webui.css'), http_reply_file('webui.css', []), []).
@@ -21,6 +23,7 @@ home(_Request) :-
 	reply_html_page(title('Spreadsheet analyzer'),
 			[ \html_requires(root('webui.css')),
 			  h1('Spreadsheet analyzer'),
+			  \error_area,
 			  \log_area([id(log)]),
 			  \form_area([id(form)])
 			]).
@@ -38,6 +41,9 @@ webshow(Data) -->
 	html(h4('Showing ~p'-[Data])),
 	web_portray(Data).
 
+web_portray(Var) -->
+	{ var(Var) }, !,
+	html(p('Unbound variable')).
 web_portray(cell_range(Sheet, SX,SY, EX,EY)) -->
 	{ integer(SX), integer(SY), integer(EX), integer(EY) }, !,
 	html(table(class(spreadsheet),
@@ -46,6 +52,9 @@ web_portray(cell(Sheet,X,Y)) -->
 	web_portray(cell_range(Sheet, X,Y, X,Y)).
 web_portray(table(_Id,_Type,_DS,_Headers,Union)) -->
 	web_portray(Union).
+web_portray(sheet(Sheet)) -->
+	{ sheet_bb(user:Sheet, DS) }, !,
+	web_portray(DS).
 web_portray(List) -->
 	{ is_list(List), !,
 	  length(List, Len)
@@ -78,19 +87,50 @@ table_row(Sheet, Y, SX,EX) -->
 	table_row(Sheet, Y, X2,EX).
 table_row(_, _, _,_) --> [].
 
+%%	table_cell(+Sheet, +SX, +SY)//
+
 table_cell(Sheet, SX, SY) -->
-	{ cell_type(Sheet, SX,SY,percentage),
-	  cell_value(Sheet, SX,SY, Value),
+	{ (   cell_type(Sheet, SX,SY, Type)
+	  ->  true
+	  ;   Type = empty
+	  ),
+	  findall(A, cell_class_attr(Sheet,SX,SY,Type,A), Classes),
+	  (   Classes == []
+	  ->  Attrs = []
+	  ;   Attrs = [class(Classes)]
+	  )
+	},
+	table_cell(Type, Sheet, SX, SY, Attrs).
+
+cell_class_attr(_, _, _, Type, Type).
+cell_class_attr(Sheet, X, Y, _, intable) :-
+	cell_property(Sheet, X, Y, table(_)).
+cell_class_attr(Sheet, X, Y, _, derived) :-
+	cell_formula(Sheet, X, Y, _).
+
+%%	table_cell(+Sheet, +SX, +SY, +Style)//
+
+table_cell(percentage, Sheet, SX, SY, Attrs) -->
+	{ cell_value(Sheet, SX,SY, Value),
 	  Val is Value*100
 	}, !,
-	html(td([Val,'%'])).
-table_cell(Sheet, SX, SY) -->
+	html(td(Attrs, ['~3f%'-[Val]])).
+table_cell(float, Sheet, SX, SY, Attrs) -->
+	{ cell_value(Sheet, SX,SY, Value),
+	  number(Value),
+	  ndigits(Value, 5, V2)
+	}, !,
+	html(td(Attrs, [V2])).
+table_cell(_, Sheet, SX, SY, Attrs) -->
 	{ cell_value(Sheet, SX,SY, Value)
 	}, !,
 	(   { atomic(Value) }
-	->  html(td(Value))
-	;   html(td('~q'-[Value]))
+	->  html(td(Attrs, Value))
+	;   html(td(Attrs, '~q'-[Value]))
 	).
-table_cell(_, _, _) -->
-	html(td(class(empty), [])).
+table_cell(_, _, _, _, Attrs) -->
+	html(td(Attrs, [])).
 
+ndigits(F0, N, F) :-
+	Times is 10**max(1,N-round(log10(F0))),
+	F is round(F0*Times)/Times.

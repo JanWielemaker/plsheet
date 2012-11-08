@@ -2,25 +2,53 @@
 	  [ assert_tables/2,		% ?Sheet, ?Type
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
+	    cell_property/4,		% :Sheet, ?X, ?Y, ?Property
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
 :- use_module(recognise).
 :- use_module(datasource).
+:- use_module(ods_table).
 :- use_module(library(lists)).
 
 :- meta_predicate
 	tables(:, ?, -),
-	assert_tables(:, ?).
+	assert_tables(:, ?),
+	cell_property(:,?,?,?).
 
 %%	assert_tables(:Sheet, ?Type) is det.
 %
-%	Infer and assert identified tables.
+%	Infer and assert identified tables. Creates the following facts:
+%
+%	  * table(TableID, Type, MainDS, HeaderDSList, UnionDS)
+%	  * cell_property(Sheet CellId, table(TableID))
 
 assert_tables(Sheet, Type) :-
 	Sheet = M:_,
 	tables(Sheet, Type, Tables),
 	forall(member(T, Tables),
-	       assertz(M:T)).
+	       assert_table(M:T)).
+
+assert_table(M:T) :-
+	assertz(M:T),
+	T = table(TabId, _Type, _MainDS, _HdrDS, Union),
+	ds_sheet(Union, Sheet),
+	forall(ds_inside(Union, X, Y),
+	       ( cell_id(X,Y,CellId),
+		 assertz(M:cell_property(Sheet,CellId,table(TabId)))
+	       )).
+
+%%	cell_property(:Sheet, ?X, ?Y, ?Property)
+%
+%	Query (inferred) properties of the cell Sheet.XY.
+
+cell_property(M:Sheet, X, Y, Property) :-
+	(   nonvar(X), nonvar(Y)
+	->  cell_id(X,Y,Id),
+	    M:cell_property(Sheet,Id,Property)
+	;   M:cell_property(Sheet,Id,Property),
+	    cell_id(X,Y,Id)
+	).
+
 
 %%	tables(?Sheet, +Type, -Tables) is det.
 %
@@ -72,9 +100,8 @@ remove_inside([H|T0], All, [H|T]) :-
 
 cells_outside_tables(Sheet, Tables, Cells) :-
 	findall(cell(Sheet,X,Y),
-		( sheet_bb(Sheet, SX,SY, EX,EY),
-		  between(SX, EX, X),
-		  between(SY, EY, Y),
+		( sheet_bb(Sheet, SheetDS),
+		  ds_inside(SheetDS, X, Y),
 		  cell_value(Sheet, X, Y, _),
 		  \+ ( member(table(_,_,DS), Tables),
 		       ds_inside(DS,X,Y)
