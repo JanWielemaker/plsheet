@@ -7,6 +7,9 @@
 :- use_module(datasource).
 :- use_module(library(lists)).
 
+:- meta_predicate
+	tables(:, ?, -).
+
 %%	tables(?Sheet, +Type, -Tables) is det.
 %
 %	Make an initial guess  at  all  tables.   Table  is  a  list  of
@@ -22,13 +25,14 @@ tables(Sheet, Type, Tables) :-
 		NestedTables),
 	append(NestedTables, Tables).
 
-table_in_sheet(Sheet, Type, table(DS,Headers,Union)) :-
+table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 	ds_sheet(DS, Sheet),
 	cell_class(Type),
 	anchor(DS, Type),
-	once((block(DS, Type),
-	      table(DS, Headers))),
-	ds_union([DS|Headers], Union).
+	once((block(M:DS, Type),
+	      table(M:DS, Headers))),
+	ds_union([DS|Headers], Union),
+	ds_id(DS, Id).
 
 %%	remove_inside(+Tables0, -Tables) is det.
 %
@@ -67,50 +71,55 @@ cells_outside_tables(Sheet, Tables, Cells) :-
 		Cells).
 
 
-%%	table(+DataDS, ?SupportDS) is nondet.
+%%	table(:DataDS, ?SupportDS) is nondet.
 %
 %	True when there is a table  with   DataDS  and a list of support
 %	datasources.
 
-table(DataDS, TitleDS) :-
+table(QDataDS, TitleDS) :-
+	QDataDS = _:DataDS,
 	ds_size(DataDS, Cols, Rows),
-	top_rows(DataDS, -1, TitleDS, Left),
-	left_columns(DataDS, -1, Left, Right),
-	right_columns(DataDS, Cols, Right, Bottom),
-	bottom_rows(DataDS, Rows, Bottom, []).
+	top_rows(QDataDS, -1, TitleDS, Left),
+	left_columns(QDataDS, -1, Left, Right),
+	right_columns(QDataDS, Cols, Right, Bottom),
+	bottom_rows(QDataDS, Rows, Bottom, []).
 
-%%	top_rows(+DS, +StartIndex, -Rows, ?Tail) is nondet.
-%%	bottom_rows(+DS, +StartIndex, -Rows, ?Tail) is nondet.
-%%	left_columns(+DS, +StartIndex, -Rows, ?Tail) is nondet.
-%%	right_columns(+DS, +StartIndex, -Rows, ?Tail) is nondet.
+%%	top_rows(:DS, +StartIndex, -Rows, ?Tail) is nondet.
+%%	bottom_rows(:DS, +StartIndex, -Rows, ?Tail) is nondet.
+%%	left_columns(:DS, +StartIndex, -Rows, ?Tail) is nondet.
+%%	right_columns(:DS, +StartIndex, -Rows, ?Tail) is nondet.
 
-top_rows(DataDS, Index, [Row|Rows], Tail) :-
+top_rows(QDataDS, Index, [Row|Rows], Tail) :-
+	QDataDS = M:DataDS,
 	ds_unbounded_row_slice(DataDS, Index, Row),
-	row(Row, string),
+	row(M:Row, string),
 	Up is Index - 1,
-	top_rows(DataDS, Up, Rows, Tail).
+	top_rows(QDataDS, Up, Rows, Tail).
 top_rows(_, _, Tail, Tail).
 
 
-bottom_rows(DataDS, Index, [Row|Rows], Tail) :-
+bottom_rows(QDataDS, Index, [Row|Rows], Tail) :-
+	QDataDS = M:DataDS,
 	ds_unbounded_row_slice(DataDS, Index, Row),
-	row(Row, string),
+	row(M:Row, string),
 	Down is Index + 1,
-	bottom_rows(DataDS, Down, Rows, Tail).
+	bottom_rows(QDataDS, Down, Rows, Tail).
 bottom_rows(_, _, Tail, Tail).
 
 
-left_columns(DataDS, Index, [Col|Cols], Tail) :-
+left_columns(QDataDS, Index, [Col|Cols], Tail) :-
+	QDataDS = M:DataDS,
 	ds_unbounded_column_slice(DataDS, Index, Col),
-	col(Col, string),
+	col(M:Col, string),
 	Up is Index - 1,
-	left_columns(DataDS, Up, Cols, Tail).
+	left_columns(QDataDS, Up, Cols, Tail).
 left_columns(_, _, Tail, Tail).
 
-right_columns(DataDS, Index, [Col|Cols], Tail) :-
+right_columns(QDataDS, Index, [Col|Cols], Tail) :-
+	QDataDS = M:DataDS,
 	ds_unbounded_column_slice(DataDS, Index, Col),
-	col(Col, string),
+	col(M:Col, string),
 	Right is Index + 1,
-	right_columns(DataDS, Right, Cols, Tail).
+	right_columns(QDataDS, Right, Cols, Tail).
 right_columns(_, _, Tail, Tail).
 

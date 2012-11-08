@@ -1,6 +1,7 @@
 :- module(datasource,
 	  [ ds_sheet/2,			% +DS, -Sheet
 	    ds_size/3,			% +DS, -Columns, -Rows
+	    ds_id/2,			% ?DS, ?Id
 
 	    ds_inside/3,		% +DS, ?X, ?Y
 
@@ -14,6 +15,8 @@
 	    ds_column_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_column_slice/3	% +DS1, +Offset, ?Slice
 	  ]).
+:- use_module(ods_table).
+
 
 		 /*******************************
 		 *	 SIMPLE PROPERTIES	*
@@ -32,6 +35,23 @@ ds_sheet(cell_range(Sheet, _,_, _,_), Sheet).
 ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
 	Columns is EX-SX+1,
 	Rows is EY-SY+1.
+
+%%	ds_id(+DS, -ID) is det.
+%
+%	True when ID is an identifier for DS
+
+ds_id(DS, Id) :-
+	ground(DS), !,
+	DS = cell_range(Sheet, SX,SY, EX,EY),
+	column_name(SX, SC),
+	column_name(EX, EC),
+	(   sheet_name_need_quotes(Sheet)
+	->  format(atom(Id), '[\'~w\'.~w~w:~w~w]', [Sheet,SC,SY,EC,EY])
+	;   format(atom(Id), '[~w.~w~w:~w~w]', [Sheet,SC,SY,EC,EY])
+	).
+ds_id(DS, Id) :-
+	atom_codes(Id, Codes),
+	phrase(ods_reference(DS, ''), Codes).
 
 
 		 /*******************************

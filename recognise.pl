@@ -66,7 +66,7 @@ anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
 	    cell_class(M:Sheet, SX,AY, TAbove), TAbove \== Type
 	).
 
-%%	block(?DataSource, ?Type) is nondet.
+%%	block(:DataSource, ?Type) is nondet.
 
 block(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
 	block(M:Sheet, SX,SY, EX,EY, Type).

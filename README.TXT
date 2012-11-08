@@ -45,12 +45,13 @@ unoconv -f ods *.xlsx
 
 ---+ Approach
 
----++ Dependency discovery
+  1. Find clear tables: a square of equally typed objects with
+     aligned strings rows and columns.
 
-Dependency of a cell is a cell or datasource.
+  2. Delete tables that are completely inside other tables. These are
+     typically the header of another table.
 
----++ Identify Datasources
+  3. Find conflicts.  These are tables that intersect.
 
-A datasource is a block of cells (cell_range(Sheet,SX,SY,EX,EY)).
-
-  - Identify as dependency from formulas
+     - Assume this is the result of header rows/columns that are shared.
+     -

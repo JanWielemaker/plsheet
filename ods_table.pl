@@ -15,7 +15,10 @@
 	    cell/8,			% :Sheet, ?X, ?Y, ?V, ?T, ?F, ?S, ?A
 
 	    column_name/2,		% ?Index, ?Name
-	    ods_DOM/3			% :Source, -DOM, +Options
+	    ods_DOM/3,			% :Source, -DOM, +Options
+
+	    sheet_name_need_quotes/1,	% +SheetName
+	    ods_reference//2		% -Expr, +Table
 	  ]).
 :- use_module(library(xpath)).
 :- use_module(library(sgml)).
@@ -830,6 +833,15 @@ not_in_sheet_name(0'.).
 not_in_sheet_name(0'\s).
 not_in_sheet_name(0'#).
 not_in_sheet_name(0'$).
+
+%%	sheet_name_need_quotes(+Name) is semidet.
+%
+%	True when Name is a sheet name that needs (single) quotes.
+
+sheet_name_need_quotes(Name) :-
+	atom_codes(Name, Codes),
+	member(Code, Codes),
+	not_in_sheet_name(Code), !.
 
 
 		 /*******************************

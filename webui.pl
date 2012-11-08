@@ -44,7 +44,7 @@ web_portray(cell_range(Sheet, SX,SY, EX,EY)) -->
 		   \table_rows(Sheet, SX,SY, EX,EY))), !.
 web_portray(cell(Sheet,X,Y)) -->
 	web_portray(cell_range(Sheet, X,Y, X,Y)).
-web_portray(table(_,_,Union)) -->
+web_portray(table(_Id,_Type,_DS,_Headers,Union)) -->
 	web_portray(Union).
 web_portray(List) -->
 	{ is_list(List), !,

@@ -144,7 +144,11 @@ user:portray(cell_range(Sheet,SX,SY,EX,EY)) :-
 	integer(SX), integer(EX),
 	column_name(SX, CS),
 	column_name(EX, CE),
-	format('[~q.~w~w:~w~w]', [Sheet, CS,SY,CE,EY]).
+	(   atom(Sheet),
+	    \+ sheet_name_need_quotes(Sheet)
+	->  format('[~w.~w~w:~w~w]', [Sheet, CS,SY,CE,EY])
+	;   format('[\'~w\'.~w~w:~w~w]', [Sheet, CS,SY,CE,EY])
+	).
 
 user:message_property(debug(ods(test(ok))), color(fg(green))).
 user:message_property(debug(ods(test(error))), color(fg(red))).
