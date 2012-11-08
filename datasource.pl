@@ -14,7 +14,8 @@
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
 	    ds_column_slice/3,		% +DS1, ?Offset, ?Slice
-	    ds_unbounded_column_slice/3	% +DS1, +Offset, ?Slice
+	    ds_unbounded_column_slice/3,% +DS1, +Offset, ?Slice
+	    ds_grow/3			% +DS0, +Offset, -DS
 	  ]).
 :- use_module(ods_table).
 
@@ -85,7 +86,7 @@ ds_adjacent(cell_range(Sheet, SX1,SY1, EX1,EY1),
 	    ;	EX2+1 =:= SX1
 	    ->	Rel = right_of
 	    )
-	;   range_intersect(SX1,EX1, SX2,EX2, SX,EX)
+	;   range_intersect(SX1,EX1, SX2,EX2, _,_)
 	->  (   EY1+1 =:= SY2
 	    ->  Rel = above
 	    ;	EY2+1 =:= SY1
@@ -211,3 +212,12 @@ ds_unbounded_column_slice(cell_range(Sheet, SX,SY,  _,EY), Offset,
 			  cell_range(Sheet, CX,SY, CX,EY)) :-
 	CX is SX+Offset.
 
+%%	ds_grow(+DS0, +Amount, -DS)
+
+ds_grow(cell_range(Sheet, SX0,SY0, EX0,EY0),
+	Offset,
+	cell_range(Sheet, SX,SY, EX,EY)) :-
+	SX is SX0-Offset,
+	SY is SY0-Offset,
+	EX is EX0+Offset,
+	EY is EY0+Offset.

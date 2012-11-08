@@ -149,13 +149,15 @@ cell_class(Sheet, X,Y, Type) :-
 	->  Type = Type0
 	;   Type = empty
 	->  sheet_bb(Sheet, SheetDS),
-	    ds_inside(SheetDS, X, Y),
+	    ds_grow(SheetDS, 1, ExtendedDS),
+	    ds_inside(ExtendedDS, X, Y),
 	    \+ cell_type(Sheet, X,Y, _)
 	).
 cell_class(Sheet, X,Y, Type) :-
 	Type == empty, !,
 	sheet_bb(Sheet, SheetDS),
-	ds_inside(SheetDS, X, Y),
+	ds_grow(SheetDS, 1, ExtendedDS),
+	ds_inside(ExtendedDS, X, Y),
 	\+ cell_type(Sheet, X,Y, _).
 cell_class(Sheet, X,Y, Type) :-
 	cell_type(Sheet, X,Y, Type).
