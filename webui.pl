@@ -18,8 +18,9 @@ server(Port) :-
 
 
 home(_Request) :-
-	reply_html_page(title('Test'),
+	reply_html_page(title('Spreadsheet analyzer'),
 			[ \html_requires(root('webui.css')),
+			  h1('Spreadsheet analyzer'),
 			  \log_area([id(log)]),
 			  \form_area([id(form)])
 			]).
