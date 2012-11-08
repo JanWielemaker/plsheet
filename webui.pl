@@ -131,6 +131,9 @@ table_cell(_, Sheet, SX, SY, Attrs) -->
 table_cell(_, _, _, _, Attrs) -->
 	html(td(Attrs, [])).
 
+ndigits(F0, _, F) :-
+	F0 =:= 0, !,
+	F = F0.
 ndigits(F0, N, F) :-
 	Times is 10**max(1,N-round(log10(F0))),
 	F is round(F0*Times)/Times.
