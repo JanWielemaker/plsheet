@@ -121,10 +121,23 @@ table_cell(Sheet, SX, SY) -->
 	table_cell(Type, Sheet, SX, SY, Attrs).
 
 cell_class_attr(_, _, _, Type, Type).
-cell_class_attr(Sheet, X, Y, _, intable) :-
-	cell_property(Sheet, X, Y, table(_)).
+cell_class_attr(Sheet, X, Y, _, Class) :-
+	(   cell_property(Sheet, X, Y, tables(_TabId1,_TabId2))
+	->  Class = intables
+	;   cell_property(Sheet, X, Y, table(TabId)),
+	    (   table_property(TabId, color(C))
+	    ->  color_class(C, Class)
+	    ;   Class = intable
+	    )
+	).
 cell_class_attr(Sheet, X, Y, _, derived) :-
 	cell_formula(Sheet, X, Y, _).
+
+color_class(1, c1).
+color_class(2, c2).
+color_class(3, c3).
+color_class(4, c4).
+
 
 %%	table_cell(+Sheet, +SX, +SY, +Style)//
 

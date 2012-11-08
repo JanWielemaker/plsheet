@@ -3,17 +3,26 @@
 
 	    sheet_table/2,		% ?Sheet, ?Table
 	    table_union/2,		% ?Table, ?Union
+	    table_id/2,			% ?Table, ?Id
+
+	    assert_table_property/2,	% :TabId, +Property
 
 	    assert_cell_property/4,	% :Sheet, +X, +Y, ?Property
-	    cell_property/4		% :Sheet, ?X, ?Y, ?Property
+	    cell_property/4,		% :Sheet, ?X, ?Y, ?Property
+
+	    clean_data/0
 	  ]).
 :- use_module(datasource).
 
 :- meta_predicate
 	assert_table(:),
 	sheet_table(:, ?),
+	assert_table_property(:, +),
 	assert_cell_property(:, +, +, +),
 	cell_property(:,?,?,?).
+
+:- module_transparent
+	clean_data/0.
 
 
 /** <module> Data store module
@@ -21,8 +30,21 @@
 Defined relations:
 
   * table(TabId, Type, DataDS, HeaderDSList, UnionDS)
+  * table_property(TabId, Property)
   * cell_property(Sheet, X, Y, Property)
 */
+
+data(table_property/2).
+data(cell_property/3).
+data(table/5).
+
+clean_data :-
+	context_module(M),
+	forall(ods_data:data(Name/Arity),
+	       ( functor(Head, Name, Arity),
+		 retractall(M:Head)
+	       )).
+
 
 		 /*******************************
 		 *	       TABLES		*
@@ -57,6 +79,16 @@ sheet_table(M:Sheet, table(TabId, Type, DataDS, HdrDS, Union)) :-
 %	True uf Union is the UnionDS of Table.
 
 table_union(table(_TabId, _Type, _DataDS, _HdrDS, Union), Union).
+
+%%	table_id(+Table, -Id) is det.
+
+table_id(table(TabId, _Type, _DataDS, _HdrDS, _Union), TabId).
+
+
+%%	assert_table_property(:TabId, +Property)
+
+assert_table_property(M:TabId, Property) :-
+	assertz(M:table_property(TabId, Property)).
 
 
 		 /*******************************

@@ -1,6 +1,7 @@
 :- use_module(ods_table).
 :- use_module(recognise).
 :- use_module(table).
+:- use_module(data).
 :- use_module(webui).
 :- use_module(library(debug)).
 
@@ -36,6 +37,24 @@ load :-
 load(File) :-
 	ods_unload,
 	ods_load(File).
+
+
+		 /*******************************
+		 *	     SEGMENTING		*
+		 *******************************/
+
+segment :-
+	clean_data,
+	assert_tables(_Sheet1,_Type),
+	color_tables(_Sheet2),
+	true.
+
+
+
+
+		 /*******************************
+		 *	 FORMULA TESTING	*
+		 *******************************/
 
 test(Sheet, X,Y) :-
 	test(Sheet, X,Y, fail).

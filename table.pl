@@ -5,6 +5,7 @@
 
 	    adjacent_tables/4,		% :Sheet, ?Tab1, ?Rel, ?Tab2
 	    intersecting_tables/4,	% :Sheet, ?Tab1, ?Tab2, -Intersection
+	    color_tables/1,		% :Sheet
 
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
@@ -13,12 +14,14 @@
 :- use_module(ods_table).
 :- use_module(data).
 :- use_module(library(lists)).
+:- use_module(library(clpfd)).
 
 :- meta_predicate
 	tables(:, ?, -),
 	assert_tables(:, ?),
 	adjacent_tables(:, ?, ?, ?),
-	intersecting_tables(:, ?, ?, ?).
+	intersecting_tables(:, ?, ?, ?),
+	color_tables(:).
 
 /** <module> Detect tables
 */
@@ -157,10 +160,56 @@ adjacent_tables(Sheet, Tab1, Rel, Tab2) :-
 intersecting_tables(Sheet, Tab1, Tab2, Intersection) :-
 	sheet_table(Sheet, Tab1),
 	sheet_table(Sheet, Tab2),
+	Tab1 \== Tab2,
 	table_union(Tab1, Union1),
 	table_union(Tab2, Union2),
 	ds_intersection(Union1, Union2, Intersection).
 
+
+%%	color_tables(?Sheet) is det.
+%
+%	Assign colours to tables.  Colours are named 1,2,3,4.
+
+color_tables(Sheet) :-
+	Sheet = M:SheetName,
+	forall(M:sheet(SheetName, _),
+	       do_color_sheet(M:SheetName)).
+
+do_color_sheet(Sheet) :-
+	Sheet = _:SheetName,
+	debug(color, 'Colouring sheet ~q', [SheetName]),
+	color_adjacent_tables(Sheet),
+	color_intersecting_cells(Sheet).
+
+color_adjacent_tables(Sheet) :-
+	Sheet = M:_,
+	findall(color(T1,_)-color(T2,_),
+		( adjacent_tables(Sheet, Tab1, _, Tab2),
+		  table_id(Tab1, T1),
+		  table_id(Tab2, T2)
+		),
+		Pairs),
+	maplist(color_constraint, Pairs),
+	term_variables(Pairs, Colors),
+	label(Colors), !,
+	maplist(assign_color(M), Pairs).
+
+color_constraint(color(_,C1)-color(_,C2)) :-
+	C1 in 1..4,
+	C2 in 1..4,
+	C1 #\= C2.
+
+assign_color(M, color(T1,C1)-color(T2,C2)) :-
+	assert_table_property(M:T1, color(C1)),
+	assert_table_property(M:T2, color(C2)).
+
+color_intersecting_cells(Sheet) :-
+	forall(intersecting_tables(Sheet, Tab1, Tab2, Intersection),
+	       ( table_id(Tab1, Id1),
+		 table_id(Tab2, Id2),
+		 forall(ds_inside(Intersection, X, Y),
+			assert_cell_property(Sheet, X, Y, tables(Id1,Id2)))
+	       )).
 
 
 		 /*******************************

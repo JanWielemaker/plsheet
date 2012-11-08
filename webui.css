@@ -13,6 +13,26 @@ table.spreadsheet td.intable
 { background-color:#a8ffcc;
 }
 
+table.spreadsheet td.intables
+{ background-color:#eaa1ff;
+}
+
+table.spreadsheet td.c1
+{ background-color:#d3e170;
+}
+
+table.spreadsheet td.c2
+{ background-color:#9be170;
+}
+
+table.spreadsheet td.c3
+{ background-color:#70e1d2;
+}
+
+table.spreadsheet td.c3
+{ background-color:#7fd8ff;
+}
+
 table.spreadsheet td.float,td.percentage
 { text-align:right;
 }
