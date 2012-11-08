@@ -2,6 +2,9 @@
 	  [ assert_tables/2,		% ?Sheet, ?Type
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
+
+	    adjacent_tables/4,		% :Sheet, ?Tab1, ?Rel, ?Tab2
+
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
 :- use_module(recognise).
@@ -12,7 +15,8 @@
 
 :- meta_predicate
 	tables(:, ?, -),
-	assert_tables(:, ?).
+	assert_tables(:, ?),
+	adjacent_tables(:, ?, ?, ?).
 
 /** <module> Detect tables
 */
@@ -73,23 +77,6 @@ remove_inside([H|T0], All, [H|T]) :-
 	remove_inside(T0, All, T).
 
 
-%%	cells_outside_tables(+Sheet, +Tables, -Cells) is det.
-%
-%	True when Cells is a list of cell(Sheet,X,Y) that is outside any
-%	table.
-
-cells_outside_tables(Sheet, Tables, Cells) :-
-	findall(cell(Sheet,X,Y),
-		( sheet_bb(Sheet, SheetDS),
-		  ds_inside(SheetDS, X, Y),
-		  cell_value(Sheet, X, Y, _),
-		  \+ ( member(table(_,_,DS), Tables),
-		       ds_inside(DS,X,Y)
-		     )
-		),
-		Cells).
-
-
 %%	table(:DataDS, ?SupportDS) is nondet.
 %
 %	True when there is a table  with   DataDS  and a list of support
@@ -142,3 +129,40 @@ right_columns(QDataDS, Index, [Col|Cols], Tail) :-
 	right_columns(QDataDS, Right, Cols, Tail).
 right_columns(_, _, Tail, Tail).
 
+
+		 /*******************************
+		 *	  TABLE RELATIONS	*
+		 *******************************/
+
+%%	adjacent_tables(:Sheet, ?Tab1, ?Rel, ?Tab2)
+%
+%	True when Tab1 and Tab2 are adjacent in Sheet.  Rel is one of
+%	=above=, =below= =left_of= or =right_of=
+
+adjacent_tables(Sheet, Tab1, Rel, Tab2) :-
+	sheet_table(Sheet, Tab1),
+	sheet_table(Sheet, Tab2),
+	table_union(Tab1, Union1),
+	table_union(Tab2, Union2),
+	ds_adjacent(Union1, Rel, Union2).
+
+
+		 /*******************************
+		 *	     LEFT-OVERS		*
+		 *******************************/
+
+%%	cells_outside_tables(+Sheet, +Tables, -Cells) is det.
+%
+%	True when Cells is a list of cell(Sheet,X,Y) that is outside any
+%	table.
+
+cells_outside_tables(Sheet, Tables, Cells) :-
+	findall(cell(Sheet,X,Y),
+		( sheet_bb(Sheet, SheetDS),
+		  ds_inside(SheetDS, X, Y),
+		  cell_value(Sheet, X, Y, _),
+		  \+ ( member(table(_,_,DS), Tables),
+		       ds_inside(DS,X,Y)
+		     )
+		),
+		Cells).

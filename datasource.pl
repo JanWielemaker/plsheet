@@ -4,6 +4,7 @@
 	    ds_id/2,			% ?DS, ?Id
 
 	    ds_inside/3,		% +DS, ?X, ?Y
+	    ds_adjacent/3,		% +DS1, ?Rel, +DS2
 
 	    ds_intersection/3,		% +DS1, +DS2, -DS
 	    ds_union/3,			% +DS1, +DS2, -DS
@@ -65,6 +66,33 @@ ds_id(DS, Id) :-
 ds_inside(cell_range(_Sheet, SX,SY, EX,EY), X, Y) :-
 	between(SY, EY, Y),
 	between(SX, EX, X).
+
+
+		 /*******************************
+		 *	 SPATIAL RELATIONS	*
+		 *******************************/
+
+%%	ds_adjacent(+DS1, -Rel, +DS2) is semidet.
+%
+%	True if DS1 is =above=, =below= =left_of= or =right_of= DS2.
+
+ds_adjacent(cell_range(Sheet, SX1,SY1, EX1,EY1),
+	    Rel,
+	    cell_range(Sheet, SX2,SY2, EX2,EY2)) :-
+	(   range_intersect(SY1,EY1, SY2,EY2, _,_)
+	->  (   EX1+1 =:= SX2
+	    ->  Rel = left_of
+	    ;	EX2+1 =:= SX1
+	    ->	Rel = right_of
+	    )
+	;   range_intersect(SX1,EX1, SX2,EX2, SX,EX)
+	->  (   EY1+1 =:= SY2
+	    ->  Rel = above
+	    ;	EY2+1 =:= SY1
+	    ->	Rel = below
+	    )
+	).
+
 
 
 		 /*******************************

@@ -9,7 +9,7 @@
 :- use_module(library(http/http_dispatch)).
 :- use_module(library(http/html_head)).
 :- use_module(library(http/html_write)).
-:- use_module(table).
+:- use_module(data).
 :- use_module(recognise).
 
 :- http_handler(root(.), home, []).
