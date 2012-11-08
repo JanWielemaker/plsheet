@@ -4,6 +4,7 @@
 	    table/2,			% +Data, -Support
 
 	    adjacent_tables/4,		% :Sheet, ?Tab1, ?Rel, ?Tab2
+	    intersecting_tables/4,	% :Sheet, ?Tab1, ?Tab2, -Intersection
 
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
@@ -16,7 +17,8 @@
 :- meta_predicate
 	tables(:, ?, -),
 	assert_tables(:, ?),
-	adjacent_tables(:, ?, ?, ?).
+	adjacent_tables(:, ?, ?, ?),
+	intersecting_tables(:, ?, ?, ?).
 
 /** <module> Detect tables
 */
@@ -145,6 +147,20 @@ adjacent_tables(Sheet, Tab1, Rel, Tab2) :-
 	table_union(Tab1, Union1),
 	table_union(Tab2, Union2),
 	ds_adjacent(Union1, Rel, Union2).
+
+
+%%	intersecting_tables(:Sheet, ?Tab1, ?Tab2, -Intersection)
+%
+%	True when Tab1 and Tab2 intersect  in Sheet. Intersection is the
+%	intersecting part.
+
+intersecting_tables(Sheet, Tab1, Tab2, Intersection) :-
+	sheet_table(Sheet, Tab1),
+	sheet_table(Sheet, Tab2),
+	table_union(Tab1, Union1),
+	table_union(Tab2, Union2),
+	ds_intersection(Union1, Union2, Intersection).
+
 
 
 		 /*******************************
