@@ -1,5 +1,6 @@
 :- module(table,
-	  [ tables/3,			% ?Sheet, +Type, -Tables
+	  [ assert_tables/2,		% ?Sheet, ?Type
+	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
@@ -8,7 +9,18 @@
 :- use_module(library(lists)).
 
 :- meta_predicate
-	tables(:, ?, -).
+	tables(:, ?, -),
+	assert_tables(:, ?).
+
+%%	assert_tables(:Sheet, ?Type) is det.
+%
+%	Infer and assert identified tables.
+
+assert_tables(Sheet, Type) :-
+	Sheet = M:_,
+	tables(Sheet, Type, Tables),
+	forall(member(T, Tables),
+	       assertz(M:T)).
 
 %%	tables(?Sheet, +Type, -Tables) is det.
 %
