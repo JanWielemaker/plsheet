@@ -80,10 +80,16 @@ col(M:cell_range(Sheet, SX,SY, EX,EY), Type) :-
 
 
 %%	block(?Sheet, ?SX,?SY, ?EX, ?EY, ?Type) is nondet.
+%
+%	A block is the largest rectangular  area   of  cells of the same
+%	Type that starts at SX,SY.  A   block  consists minimally of two
+%	cells, stacked either horizontally or vertically.
 
 block(Sheet, SX,SY, EX,EY, Type) :-
-	row(Sheet, SX,SY, EX,SY, Type),
+	row(Sheet, SX,SY, EX,SY, Type), !,		% dubious cut
 	block2(Sheet, SX,SY,EX,EY, Type).
+block(Sheet, SX,SY, EX,EY, Type) :-
+	col(Sheet, SX,SY, EX,EY, Type).
 
 block2(Sheet, SX,SY,EX,EY, Type) :-
 	(   Y2 is SY+1,

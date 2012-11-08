@@ -14,6 +14,9 @@
 	tables(:, ?, -),
 	assert_tables(:, ?).
 
+/** <module> Detect tables
+*/
+
 %%	assert_tables(:Sheet, ?Type) is det.
 %
 %	Infer and assert identified tables. Creates the following facts:
@@ -70,7 +73,7 @@ remove_inside([H|T0], All, [H|T]) :-
 	remove_inside(T0, All, T).
 
 
-%%	cells_outside_tables(+Sheet, +Table, -Cells) is det.
+%%	cells_outside_tables(+Sheet, +Tables, -Cells) is det.
 %
 %	True when Cells is a list of cell(Sheet,X,Y) that is outside any
 %	table.
