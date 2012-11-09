@@ -10,6 +10,8 @@
 	    assert_cell_property/4,	% :Sheet, +X, +Y, ?Property
 	    cell_property/4,		% :Sheet, ?X, ?Y, ?Property
 
+	    assert_label/2,		% :Label, +Count
+
 	    clean_data/0
 	  ]).
 :- use_module(datasource).
@@ -19,7 +21,8 @@
 	sheet_table(:, ?),
 	assert_table_property(:, +),
 	assert_cell_property(:, +, +, +),
-	cell_property(:,?,?,?).
+	cell_property(:,?,?,?),
+	assert_label(:,+).
 
 :- module_transparent
 	clean_data/0.
@@ -37,6 +40,7 @@ Defined relations:
 data(table_property/2).
 data(cell_property/3).
 data(table/5).
+data(label/2).
 
 clean_data :-
 	context_module(M),
@@ -119,3 +123,13 @@ cell_property(M:Sheet, X, Y, Property) :-
 	).
 
 
+		 /*******************************
+		 *	       LABELS		*
+		 *******************************/
+
+%%	assert_label(:Label, +Count) is det.
+%
+%	Assert to label/2
+
+assert_label(M:Label, Count) :-
+	assertz(M:label(Label, Count)).

@@ -2,6 +2,7 @@
 :- use_module(recognise).
 :- use_module(table).
 :- use_module(data).
+:- use_module(labels).
 :- use_module(webui).
 :- use_module(library(debug)).
 
@@ -53,6 +54,7 @@ load(File) :-
 
 segment :-
 	clean_data,
+	assert_labels(_Sheet),
 	assert_tables(_Sheet1,_Type),
 	color_tables(_Sheet2),
 	true.
