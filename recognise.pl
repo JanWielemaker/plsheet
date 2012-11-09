@@ -145,22 +145,32 @@ cell_class(string).
 
 cell_class(Sheet, X,Y, Type) :-
 	ground(cell(Sheet,X,Y)), !,
-	(   cell_type(Sheet, X,Y, Type0)
+	(   cell_type(Sheet, X,Y, Type0),
+	    \+ cell_value(Sheet, X, Y, '')
 	->  Type = Type0
 	;   Type = empty
 	->  sheet_bb(Sheet, SheetDS),
 	    ds_grow(SheetDS, 1, ExtendedDS),
 	    ds_inside(ExtendedDS, X, Y),
-	    \+ cell_type(Sheet, X,Y, _)
+	    empty_cell(Sheet, X,Y)
 	).
 cell_class(Sheet, X,Y, Type) :-
 	Type == empty, !,
 	sheet_bb(Sheet, SheetDS),
 	ds_grow(SheetDS, 1, ExtendedDS),
 	ds_inside(ExtendedDS, X, Y),
-	\+ cell_type(Sheet, X,Y, _).
+	empty_cell(Sheet, X,Y).
 cell_class(Sheet, X,Y, Type) :-
 	cell_type(Sheet, X,Y, Type).
+
+empty_cell(Sheet, X, Y) :-
+	cell_type(Sheet, X,Y, Type), !,
+	(   Type == string
+	->  cell_value(Sheet, X, Y, '')
+	;   fail
+	).
+empty_cell(_,_,_).
+
 
 
 %%	sheet_bb(:Sheet, ?DS) is nondet.
