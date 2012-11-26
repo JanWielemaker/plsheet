@@ -7,7 +7,8 @@ user:file_search_path(alpino, Home) :-
 
 :- load_files(alpino(alpino), [silent(true), if(changed)]).
 
-parse_label(Label, Parsed) :-
+parse_label(Label, Trees) :-
 	atom_codes(Label, Codes),
 	alpino_tokenize:tokenize(Codes, Tokens),
-	alpino_parse(Tokens, Parsed, []).
+	alpino_parse(Tokens, Parsed, []),
+	alpino_result(tree(user(dt)), Parsed, Trees).
