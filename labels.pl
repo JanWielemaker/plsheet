@@ -7,6 +7,11 @@
 :- meta_predicate
 	assert_labels(:).
 
+
+		 /*******************************
+		 *	   FINDING LABELS	*
+		 *******************************/
+
 %%	assert_labels(?Sheet)
 %
 %	Collect all labels. Each label is represented as a label(Text,
