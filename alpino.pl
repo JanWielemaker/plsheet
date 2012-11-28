@@ -19,7 +19,7 @@ parse_label(Label, Trees, Options) :-
 om_annotate([], [], _).
 om_annotate([H|T0], Tokens, Options) :-
 	postag(H, Tag, Options), !,
-	format(atom(PT), '~W', [Tag, [spacing(standard)]]),
+	format(atom(PT), '~W', [Tag, [spacing(standard),quoted(true)]]),
 	Tokens = ['[', '@postag', PT, H, ']' | Rest],
 	om_annotate(T0, Rest, Options).
 om_annotate([H0|T0], [H|T], Options) :-
@@ -35,9 +35,9 @@ om_annotate([H|T0], [H|T], Options) :-
 %	Define explicit postag for Token.
 
 postag(OM, Tag, Options) :-
-	om(OM, _R),
+	om(OM, R),
 	option(om(true), Options, true),
-	Tag = meas_mod_noun(de,count,meas).
+	Tag = meas_mod_noun(om(R),count,meas). % om instead of de/het: provenance
 postag(miljoen, number(hoofd(pl_num)), _).
 postag(miljard, number(hoofd(pl_num)), _).
 postag(biljoen, number(hoofd(pl_num)), _).
