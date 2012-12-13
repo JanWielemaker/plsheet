@@ -2,12 +2,11 @@
 	  [ assert_table/1,		% +Table
 	    assert_block/1,		% +Block
 
-	    sheet_table/2,		% ?Sheet, ?Table
-	    table_union/2,		% ?Table, ?Union
-	    table_id/2,			% ?Table, ?Id
+	    sheet_object/3,		% ?Sheet, ?Type, ?Object
+	    object_union/2,		% ?Object, ?Union
+	    object_id/2,		% ?Object, ?Id
 
-	    assert_table_property/2,	% :TableId, +Property
-	    assert_block_property/2,	% :BlockId, +Property
+	    assert_object_property/2,	% :ObjId, +Property
 
 	    assert_cell_property/4,	% :Sheet, +X, +Y, ?Property
 	    cell_property/4,		% :Sheet, ?X, ?Y, ?Property
@@ -22,8 +21,7 @@
 	assert_table(:),
 	assert_block(:),
 	sheet_table(:, ?),
-	assert_table_property(:, +),
-	assert_block_property(:, +),
+	assert_object_property(:, +),
 	assert_cell_property(:, +, +, +),
 	cell_property(:,?,?,?),
 	assert_label(:,+).
@@ -38,13 +36,11 @@ Defined relations:
 
   * table(TableId, Type, DataDS, HeaderDSList, UnionDS)
   * block(BlockId, Type, DataDS)
-  * table_property(TableId, Property)
-  * block_property(BlockId, Property)
+  * object_property(ObjectId, Property)
   * cell_property(Sheet, X, Y, Property)
 */
 
-data(table_property/2).
-data(block_property/2).
+data(object_property/2).
 data(cell_property/3).
 data(table/5).
 data(block/3).
@@ -84,44 +80,40 @@ assert_block(M:T) :-
 	forall(ds_inside(DS, X, Y),
 	       assert_cell_property(M:Sheet, X, Y, block(BlockId))).
 
-%%	sheet_table(:Sheet, ?Table)
+%%	sheet_object(:Sheet, ?Type, ?Object)
 %
-%	True when Sheet contains Table.  Table is a struct
+%	True when Sheet contains Object.  Object is a table or block
 %
 %	  ==
 %	  table(TabId, Type, DataDS, HeaderDSList, UnionDS)
 %	  ==
 
-sheet_table(M:Sheet, table(TabId, Type, DataDS, HdrDS, Union)) :-
+sheet_object(M:Sheet, table, table(TabId, Type, DataDS, HdrDS, Union)) :-
 	ds_sheet(DataDS, Sheet),
 	M:table(TabId, Type, DataDS, HdrDS, Union).
+sheet_object(M:Sheet, block, block(BlockId, Type, DataDS)) :-
+	ds_sheet(DataDS, Sheet),
+	M:block(BlockId, Type, DataDS).
 
-
-%%	table_union(+Table, -Union) is det.
+%%	object_union(+Object, -Union) is det.
 %
-%	True if Union is the UnionDS of Table.
+%	True if Union is the UnionDS of Object.
 
-table_union(table(_TabId, _Type, _DataDS, _HdrDS, Union), Union).
+object_union(table(_TableId, _Type, _DataDS, _HdrDS, Union), Union).
+object_union(block(_BlockId, _Type, DataDS), DataDS).
 
-%%	table_id(+Table, -Id) is det.
+%%	object_id(+Object, -Id) is det.
 
-table_id(table(TabId, _Type, _DataDS, _HdrDS, _Union), TabId).
+object_id(table(TableId, _Type, _DataDS, _HdrDS, _Union), TableId).
+object_id(block(BlockId, _Type, _DataDS), BlockId).
 
 
-%%	assert_table_property(:TabId, +Property)
+%%	assert_object_property(:ObjId, +Property)
 
-assert_table_property(M:TabId, Property) :-
-	(   M:table_property(TabId, Property)
+assert_object_property(M:ObjId, Property) :-
+	(   M:object_property(ObjId, Property)
 	->  true
-	;   assertz(M:table_property(TabId, Property))
-	).
-
-%%	assert_block_property(:BlockId, +Property)
-
-assert_block_property(M:BlockId, Property) :-
-	(   M:block_property(BlockId, Property)
-	->  true
-	;   assertz(M:block_property(BlockId, Property))
+	;   assertz(M:object_property(ObjId, Property))
 	).
 
 
@@ -133,7 +125,6 @@ assert_block_property(M:BlockId, Property) :-
 %
 %	Add a property to a  cell.  Does   nothing  if  the  property is
 %	already defined.
-
 
 assert_cell_property(M:Sheet, X, Y, Property) :-
 	cell_id(X,Y,CellId),

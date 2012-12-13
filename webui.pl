@@ -122,10 +122,10 @@ table_cell(Sheet, SX, SY) -->
 
 cell_class_attr(_, _, _, Type, Type).
 cell_class_attr(Sheet, X, Y, _, Class) :-
-	(   cell_property(Sheet, X, Y, tables(_TabId1,_TabId2))
+	(   cell_property(Sheet, X, Y, objects(_ObjId1,_ObjId2))
 	->  Class = intables
-	;   cell_property(Sheet, X, Y, table(TabId)),
-	    (   table_property(TabId, color(C))
+	;   cell_property(Sheet, X, Y, block(ObjId)),
+	    (   object_property(ObjId, color(C))
 	    ->  color_class(C, Class)
 	    ;   Class = intable
 	    )

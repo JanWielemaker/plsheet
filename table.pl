@@ -4,9 +4,9 @@
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
 
-	    adjacent_tables/4,		% :Sheet, ?Tab1, ?Rel, ?Tab2
-	    intersecting_tables/4,	% :Sheet, ?Tab1, ?Tab2, -Intersection
-	    color_tables/1,		% :Sheet
+	    adjacent_objects/5,		% :Sheet, +Type, ?Obj1, ?Rel, ?Obj2
+	    intersecting_objects/5,	% :Sheet, +Type, ?Tab1, ?Tab2, -Intersection
+	    color_sheets/2,		% :Sheet, ?What
 
 	    cells_outside_tables/3	% +Sheet, +Table, -Cells
 	  ]).
@@ -15,14 +15,17 @@
 :- use_module(ods_table).
 :- use_module(data).
 :- use_module(library(lists)).
+:- use_module(library(apply)).
+:- use_module(library(error)).
 :- use_module(library(clpfd)).
 
 :- meta_predicate
 	tables(:, ?, -),
 	assert_tables(:, ?),
-	adjacent_tables(:, ?, ?, ?),
-	intersecting_tables(:, ?, ?, ?),
-	color_tables(:).
+	assert_blocks(:, ?),
+	adjacent_objects(:, +, ?, ?, ?),
+	intersecting_objects(:, +, ?, ?, ?),
+	color_sheets(:, ?).
 
 /** <module> Detect tables
 */
@@ -70,7 +73,7 @@ table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 	once((block(M:DS, Type),
 	      table(M:DS, Headers))),
 	ds_union([DS|Headers], Union),
-	ds_id(DS, Id).
+	ds_id(DS, Id, table).
 
 
 		 /*******************************
@@ -114,7 +117,7 @@ block_in_sheet(M:Sheet, Type, block(Id,Type,DS)) :-
 	cell_class(Type),
 	unassigned_anchor(DS, Type),
 	once(block(M:DS, Type)),
-	ds_id(DS, Id).
+	ds_id(DS, Id, block).
 
 %%	remove_inside(+Tables0, -Tables) is det.
 %
@@ -192,54 +195,57 @@ right_columns(_, _, Tail, Tail).
 		 *	  TABLE RELATIONS	*
 		 *******************************/
 
-%%	adjacent_tables(:Sheet, ?Tab1, ?Rel, ?Tab2)
+%%	adjacent_objects(:Sheet, +Type, ?Obj1, ?Rel, ?Obj2)
 %
-%	True when Tab1 and Tab2 are adjacent in Sheet.  Rel is one of
+%	True when Obj1 and Obj2 are adjacent in Sheet.  Rel is one of
 %	=above=, =below= =left_of= or =right_of=
 
-adjacent_tables(Sheet, Tab1, Rel, Tab2) :-
-	sheet_table(Sheet, Tab1),
-	sheet_table(Sheet, Tab2),
-	table_union(Tab1, Union1),
-	table_union(Tab2, Union2),
+adjacent_objects(Sheet, Type, Obj1, Rel, Obj2) :-
+	must_be(oneof([table,block]), Type),
+	sheet_object(Sheet, Type, Obj1),
+	sheet_object(Sheet, Type, Obj2),
+	object_union(Obj1, Union1),
+	object_union(Obj2, Union2),
 	ds_adjacent(Union1, Rel, Union2).
 
 
-%%	intersecting_tables(:Sheet, ?Tab1, ?Tab2, -Intersection)
+%%	intersecting_objects(:Sheet, +Type, ?Obj1, ?Obj2, -Intersection)
 %
-%	True when Tab1 and Tab2 intersect  in Sheet. Intersection is the
+%	True when Obj1 and Obj2 intersect  in Sheet. Intersection is the
 %	intersecting part.
 
-intersecting_tables(Sheet, Tab1, Tab2, Intersection) :-
-	sheet_table(Sheet, Tab1),
-	sheet_table(Sheet, Tab2),
-	Tab1 \== Tab2,
-	table_union(Tab1, Union1),
-	table_union(Tab2, Union2),
+intersecting_objects(Sheet, Type, Obj1, Obj2, Intersection) :-
+	must_be(oneof([table,block]), Type),
+	sheet_object(Sheet, Type, Obj1),
+	sheet_object(Sheet, Type, Obj2),
+	Obj1 \== Obj2,
+	object_union(Obj1, Union1),
+	object_union(Obj2, Union2),
 	ds_intersection(Union1, Union2, Intersection).
 
 
-%%	color_tables(?Sheet) is det.
+%%	color_sheets(?Sheet, ?What) is det.
 %
-%	Assign colours to tables.  Colours are named 1,2,3,4.
+%	Assign colours to objects in sheets. Colours are named 1,2,3,4.
 
-color_tables(Sheet) :-
+color_sheets(Sheet, What) :-
+	must_be(oneof([table,block]), What),
 	Sheet = M:SheetName,
 	forall(M:sheet(SheetName, _),
-	       do_color_sheet(M:SheetName)).
+	       do_color_sheet(M:SheetName, What)).
 
-do_color_sheet(Sheet) :-
+do_color_sheet(Sheet, What) :-
 	Sheet = _:SheetName,
 	debug(color, 'Colouring sheet ~q', [SheetName]),
-	color_adjacent_tables(Sheet),
-	color_intersecting_cells(Sheet).
+	color_adjacent(Sheet, What),
+	color_intersecting_cells(Sheet, What).
 
-color_adjacent_tables(Sheet) :-
+color_adjacent(Sheet, What) :-
 	Sheet = M:_,
 	findall(color(T1,_)-color(T2,_),
-		( adjacent_tables(Sheet, Tab1, _, Tab2),
-		  table_id(Tab1, T1),
-		  table_id(Tab2, T2)
+		( adjacent_objects(Sheet, What, Tab1, _, Tab2),
+		  object_id(Tab1, T1),
+		  object_id(Tab2, T2)
 		),
 		Pairs),
 	maplist(color_constraint, Pairs),
@@ -253,15 +259,15 @@ color_constraint(color(_,C1)-color(_,C2)) :-
 	C1 #\= C2.
 
 assign_color(M, color(T1,C1)-color(T2,C2)) :-
-	assert_table_property(M:T1, color(C1)),
-	assert_table_property(M:T2, color(C2)).
+	assert_object_property(M:T1, color(C1)),
+	assert_object_property(M:T2, color(C2)).
 
-color_intersecting_cells(Sheet) :-
-	forall(intersecting_tables(Sheet, Tab1, Tab2, Intersection),
-	       ( table_id(Tab1, Id1),
-		 table_id(Tab2, Id2),
+color_intersecting_cells(Sheet, What) :-
+	forall(intersecting_objects(Sheet, What, Obj1, Obj2, Intersection),
+	       ( object_id(Obj1, Id1),
+		 object_id(Obj2, Id2),
 		 forall(ds_inside(Intersection, X, Y),
-			assert_cell_property(Sheet, X, Y, tables(Id1,Id2)))
+			assert_cell_property(Sheet, X, Y, objects(Id1,Id2)))
 	       )).
 
 

@@ -55,8 +55,8 @@ load(File) :-
 segment :-
 	clean_data,
 	assert_labels(_Sheet),
-	assert_tables(_Sheet1,_Type),
-	color_tables(_Sheet2),
+	assert_blocks(_Sheet1,_Type),
+	color_sheets(_Sheet2, block),
 	true.
 
 

@@ -2,6 +2,7 @@
 	  [ ds_sheet/2,			% +DS, -Sheet
 	    ds_size/3,			% +DS, -Columns, -Rows
 	    ds_id/2,			% ?DS, ?Id
+	    ds_id/3,			% ?DS, ?Id, ?Type
 
 	    ds_inside/3,		% +DS, ?X, ?Y
 	    ds_adjacent/3,		% +DS1, ?Rel, +DS2
@@ -39,21 +40,36 @@ ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
 	Rows is EY-SY+1.
 
 %%	ds_id(+DS, -ID) is det.
+%%	ds_id(-DS, +ID) is det.
 %
 %	True when ID is an identifier for DS
 
 ds_id(DS, Id) :-
+	ds_id(DS, Id, _).
+
+ds_id(DS, Id, Type) :-
 	ground(DS), !,
 	DS = cell_range(Sheet, SX,SY, EX,EY),
 	column_name(SX, SC),
 	column_name(EX, EC),
+	(   var(Type)
+	->  Prefix = ''
+	;   type_prefix(Type, Prefix)
+	),
 	(   sheet_name_need_quotes(Sheet)
-	->  format(atom(Id), '[\'~w\'.~w~w:~w~w]', [Sheet,SC,SY,EC,EY])
-	;   format(atom(Id), '[~w.~w~w:~w~w]', [Sheet,SC,SY,EC,EY])
+	->  format(atom(Id), '~w[\'~w\'.~w~w:~w~w]', [Prefix,Sheet,SC,SY,EC,EY])
+	;   format(atom(Id), '~w[~w.~w~w:~w~w]', [Prefix,Sheet,SC,SY,EC,EY])
 	).
-ds_id(DS, Id) :-
-	atom_codes(Id, Codes),
+ds_id(DS, Id, Type) :-
+	type_prefix(Prefix, Type),
+	sub_atom(Id, 0, 1, _, Prefix),
+	sub_atom(Id, 1, 1, _, '['),
+	sub_atom(Id, 1, _, 0, DSID),
+	atom_codes(DSID, Codes),
 	phrase(ods_reference(DS, ''), Codes).
+
+type_prefix(block, 'B').
+type_prefix(table, 'T').
 
 
 		 /*******************************
