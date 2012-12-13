@@ -37,7 +37,11 @@ assert_tables(Sheet, Type) :-
 	Sheet = M:_,
 	tables(Sheet, Type, Tables),
 	forall(member(T, Tables),
-	       assert_table(M:T)).
+	       assert_table(M:T)),
+	(   Tables == []
+	->  true
+	;   assert_tables(Sheet, Type)
+	).
 
 %%	tables(?Sheet, +Type, -Tables) is det.
 %
@@ -57,7 +61,7 @@ tables(Sheet, Type, Tables) :-
 table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 	ds_sheet(DS, Sheet),
 	cell_class(Type),
-	anchor(DS, Type),
+	unassigned_anchor(DS, Type),
 	once((block(M:DS, Type),
 	      table(M:DS, Headers))),
 	ds_union([DS|Headers], Union),
