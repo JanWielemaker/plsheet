@@ -180,7 +180,7 @@ ds_intersections(ListOfDS, Pairs) :-
 		Pairs),
 	Pairs \== [].
 
-%%	ds_subtract(+DS1, +DS2, -Remainder:list(datasource)) is	multi.
+%%	ds_subtract(+DS1, +DS2, -Remainder:list(datasource)) is	det.
 %
 %	Remainder is a list of datasources that describe the area of DS1
 %	that is not covered by DS2.
@@ -193,23 +193,42 @@ ds_subtract(DS1, _, DS1).		% no intersection: DS1 is unaffected
 ds_subtract_i(DS, DS, Remainder) :- !,
 	Remainder = [].			% DS1 is entirely enclosed by DS2
 ds_subtract_i(DS, IS, Remainder) :-
-	left_slice(DS, IS, Left).
+	findall(Slice, slice(_, DS, IS, Slice), Slices),
+	Remainder = Slices.
 
-left_slice(DS, IS, Left) :-
+slice(left, DS, IS, LeftSlice) :-
 	ds_side(left, IS, ISLeft),
 	ds_side(left, DS, DSLeft),
-	Cols is DSLeft-ISLeft,
-	ds_column_slice(DS, 0, Cols, Left).
+	Cols is ISLeft-DSLeft,
+	Cols > 0,
+	ds_column_slice(DS, 0, Cols, LeftSlice).
+slice(right, DS, IS, RightSlice) :-
+	ds_side(right, IS, ISRight),
+	ds_side(right, DS, DSRight),
+	Cols is DSRight-ISRight,
+	Cols > 0,
+	ds_size(DS, Width, _),
+	Col0 is Width-Cols,
+	ds_column_slice(DS, Col0, Cols, RightSlice).
+slice(top, DS, IS, TopSlice) :-
+	ds_side(top, IS, ISTop),
+	ds_side(top, DS, DSTop),
+	Rows is ISTop-DSTop,
+	Rows > 0,
+	ds_row_slice(DS, 0, Rows, TopSlice).
+slice(right, DS, IS, BottomSlice) :-
+	ds_side(bottom, IS, ISBottom),
+	ds_side(bottom, DS, DSBottom),
+	Rows is DSBottom-ISBottom,
+	Rows > 0,
+	ds_size(DS, _, Height),
+	Row0 is Height-Rows,
+	ds_row_slice(DS, Row0, Rows, BottomSlice).
 
 ds_side(left,   cell_range(_Sheet, SX,_SY, _EX,_EY), SX).
 ds_side(right,  cell_range(_Sheet, _SX,_SY, EX,_EY), EX).
 ds_side(top,    cell_range(_Sheet, _SX,SY, _EX,_EY), SY).
 ds_side(bottom, cell_range(_Sheet, _SX,_SY, _EX,EY), EY).
-
-
-
-
-
 
 
 		 /*******************************
@@ -248,6 +267,20 @@ ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset,
 	W is EX-SX,
 	between(0,W,Offset),
 	CX is SX+Offset.
+
+%%	ds_row_slice(+DS, +Offset, +Height, -Slice) is det.
+%
+%	True when Slice is  a  horizontal   slice  from  DS, starting at
+%	Offset (0-based, relative to DS) and being rows high.
+
+ds_row_slice(cell_range(Sheet, SX,SY, EX,EY), Offset, Height,
+	     cell_range(Sheet, SX,CY, EX,ZY)) :-
+	Height >= 0,
+	H is EY-SY,
+	between(0,H,Offset),
+	CY is SY+Offset,
+	ZY is CY+Height-1,
+	ZY =< EY.
 
 %%	ds_column_slice(+DS, +Offset, +Width, -Slice) is det.
 %
