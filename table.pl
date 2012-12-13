@@ -31,7 +31,7 @@
 %	Infer and assert identified tables. Creates the following facts:
 %
 %	  * table(TableID, Type, MainDS, HeaderDSList, UnionDS)
-%	  * cell_property(Sheet CellId, table(TableID))
+%	  * cell_property(Sheet, X, Y, table(TableID))
 
 assert_tables(Sheet, Type) :-
 	Sheet = M:_,

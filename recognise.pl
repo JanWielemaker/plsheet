@@ -1,5 +1,6 @@
 :- module(recognise,
 	  [ anchor/2,			% DataSource, Type
+	    unassigned_anchor/2,	% :DataSource, ?Type
 
 	    block/2,			% DataSource, Type
 	    row/2,			% DataSource, Type
@@ -16,11 +17,13 @@
 	  ]).
 :- use_module(ods_table).
 :- use_module(datasource).
+:- use_module(data).
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 
 :- meta_predicate
 	anchor(:, ?),
+	unassigned_anchor(:, ?),
 
 	block(:,?),
 	row(:,?),
@@ -66,6 +69,33 @@ anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
 	;   AY is SY-1,
 	    cell_class(M:Sheet, SX,AY, TAbove), TAbove \== Type
 	).
+
+%%	unassigned_anchor(:DataSource, ?Type) is nondet.
+
+unassigned_anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
+	MSheet = M:Sheet,
+	cell_class(MSheet, SX,SY, Type),
+	\+ assigned(MSheet, SX,SY),
+	(   SX =:= 0
+	->  true
+	;   LX is SX-1,
+	    (	cell_class(MSheet, LX,SY, TLeft), TLeft \== Type
+	    ->	true
+	    ;	assigned(MSheet, LX,SY)
+	    )
+	),
+	(   SY =:= 0
+	->  true
+	;   AY is SY-1,
+	    (	cell_class(MSheet, SX,AY, TAbove), TAbove \== Type
+	    ->	true
+	    ;	assigned(MSheet, SX,AY)
+	    )
+	).
+
+assigned(Sheet, X, Y) :-
+	cell_property(Sheet, X, Y, table(_)).
+
 
 %%	block(:DataSource, ?Type) is nondet.
 

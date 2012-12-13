@@ -80,7 +80,7 @@ sheet_table(M:Sheet, table(TabId, Type, DataDS, HdrDS, Union)) :-
 
 %%	table_union(+Table, -Union) is det.
 %
-%	True uf Union is the UnionDS of Table.
+%	True if Union is the UnionDS of Table.
 
 table_union(table(_TabId, _Type, _DataDS, _HdrDS, Union), Union).
 
