@@ -1,5 +1,6 @@
 :- module(table,
 	  [ assert_tables/2,		% ?Sheet, ?Type
+	    data_blocks/3,		% :Sheet, ?Type, ?Blocks
 	    assert_blocks/2,		% ?Sheet, ?Type
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
@@ -22,6 +23,7 @@
 :- meta_predicate
 	tables(:, ?, -),
 	assert_tables(:, ?),
+	data_blocks(:, +, -),
 	assert_blocks(:, ?),
 	adjacent_objects(:, +, ?, ?, ?),
 	intersecting_objects(:, +, ?, ?, ?),
@@ -74,6 +76,59 @@ table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 	      table(M:DS, Headers))),
 	ds_union([DS|Headers], Union),
 	ds_id(DS, Id, table).
+
+
+		 /*******************************
+		 *	    SUPER BLOCKS	*
+		 *******************************/
+
+%%	data_blocks(:Sheet, +Type, -Blocks) is nondet.
+%
+%	True when Blocks is a list   of  non-verlapping datasources that
+%	contains all detected blocks.  This implies that we need to
+%
+%	  - resolve intersections.  There are several options:
+%	    - create a union from the intersecting blocks
+%	    - Split into independent rectangles
+%	  - Optionally join adjacent
+
+data_blocks(Sheet, Type, Blocks) :-
+	findall(Block,
+		(   sheet_object(Sheet, block, Block),
+		    object_data_type(Block, Type)
+		),
+		Blocks0),
+	resolve_intersections(Blocks0, Blocks).
+
+resolve_intersections(Blocks0, Blocks) :-
+	findall(I, block_intersection(Blocks0, I), Intersections),
+	(   Intersections == []
+	->  Blocks = Blocks0
+	;   pp(Intersections)
+	).
+
+block_intersection(Blocks, i(B1,B2,Resolutions)) :-
+	member(B1, Blocks),
+	member(B2, Blocks),
+	B1 \== B2,
+	object_union(B1, Union1),
+	object_union(B2, Union2),
+	ds_intersection(Union1, Union2, _),
+	findall(Resolve, resolve_intersection(B1, B2, Resolve),
+		Resolutions).
+
+resolve_intersection(B1, B2, union(B1,B2,Problems)) :-
+	object_union(B1, Union1),
+	object_union(B2, Union2),
+	ds_union(Union1, Union2, Union),
+	ds_sheet(Union1, Sheet),
+	findall(cell(Sheet,X,Y,Class),
+		( ds_inside(Union, X, Y),
+		  \+ ds_inside(Union1, X, Y),
+		  \+ ds_inside(Union2, X, Y),
+		  cell_class(Sheet,X,Y,Class)
+		),
+		Problems).
 
 
 		 /*******************************
