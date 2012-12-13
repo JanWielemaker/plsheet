@@ -5,6 +5,7 @@
 	    sheet_object/3,		% ?Sheet, ?Type, ?Object
 	    object_union/2,		% ?Object, ?Union
 	    object_id/2,		% ?Object, ?Id
+	    object_data_type/2,		% ?Object, ?Type
 
 	    assert_object_property/2,	% :ObjId, +Property
 
@@ -107,6 +108,10 @@ object_union(block(_BlockId, _Type, DataDS), DataDS).
 object_id(table(TableId, _Type, _DataDS, _HdrDS, _Union), TableId).
 object_id(block(BlockId, _Type, _DataDS), BlockId).
 
+%%	object_data_type(+Object, -Type) is det.
+
+object_data_type(table(_TableId, Type, _DataDS, _HdrDS, _Union), Type).
+object_data_type(block(_BlockId, Type, _DataDS), Type).
 
 %%	assert_object_property(:ObjId, +Property)
 
