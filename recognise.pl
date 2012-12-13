@@ -180,6 +180,7 @@ cell_class(string).
 cell_class(Sheet, X,Y, Type) :-
 	ground(cell(Sheet,X,Y)), !,
 	(   cell_type(Sheet, X,Y, Type0),
+	    Type0 \== no_type,
 	    \+ cell_value(Sheet, X, Y, '')
 	->  Type = Type0
 	;   Type = empty
@@ -201,7 +202,7 @@ empty_cell(Sheet, X, Y) :-
 	cell_type(Sheet, X,Y, Type), !,
 	(   Type == string
 	->  cell_value(Sheet, X, Y, '')
-	;   fail
+	;   Type == no_type
 	).
 empty_cell(_,_,_).
 
