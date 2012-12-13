@@ -1,6 +1,9 @@
 :- module(datasource,
 	  [ ds_sheet/2,			% +DS, -Sheet
 	    ds_size/3,			% +DS, -Columns, -Rows
+	    ds_cell_count/2,		% +DS, -Cells
+	    ds_empty/1,			% +DS
+	    ds_side/3,			% ?Side, ?DS, ?RowCol
 	    ds_id/2,			% ?DS, ?Id
 	    ds_id/3,			% ?DS, ?Id, ?Type
 
@@ -11,6 +14,7 @@
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
 	    ds_intersections/2,		% +DSList, -Pairs
+	    ds_subtract/3,		% +DS, +Subtract, -DSList
 
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
@@ -38,6 +42,35 @@ ds_sheet(cell_range(Sheet, _,_, _,_), Sheet).
 ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
 	Columns is EX-SX+1,
 	Rows is EY-SY+1.
+
+%%	ds_cell_count(+DS, -Count) is det.
+%
+%	True when Count is the number of cells in DS.
+
+ds_cell_count(cell_range(_Sheet, SX,SY, EX,EY), Cells) :-
+	Columns is EX-SX+1,
+	Rows is EY-SY+1,
+	Cells is Rows*Columns.
+
+%%	ds_side(?Which, ?DS, ?Value)
+%
+%	True when Value is the row/column of   the indicated side of the
+%	datasource. Which is one of =left=, =right=, =top= or =bottom=.
+
+ds_side(left,   cell_range(_Sheet, SX,_SY, _EX,_EY), SX).
+ds_side(right,  cell_range(_Sheet, _SX,_SY, EX,_EY), EX).
+ds_side(top,    cell_range(_Sheet, _SX,SY, _EX,_EY), SY).
+ds_side(bottom, cell_range(_Sheet, _SX,_SY, _EX,EY), EY).
+
+%%	ds_empty(+DS) is semidet.
+%
+%	True if DS is empty (contains no cells)
+
+ds_empty(cell_range(_Sheet, SX,SY, EX,EY)) :-
+	(   EX < SX
+	->  true
+	;   EY < SY
+	).
 
 %%	ds_id(+DS, -ID) is det.
 %%	ds_id(-DS, +ID) is det.
@@ -179,6 +212,71 @@ ds_intersections(ListOfDS, Pairs) :-
 		Pairs),
 	Pairs \== [].
 
+%%	ds_subtract(+DS1, +DS2,
+%%		    -Remainder:list(pair(where-datasource))) is det.
+%
+%	Remainder is a list of pairs   of the form <location>-datasource
+%	that describes the area of  DS1  that   is  not  covered by DS2.
+%	Defined locations are:
+%
+%	  $ =all= :
+%	  DS1 is unaffected
+%	  $ =top= and =bottom= :
+%	  DS2 removes a set of rows
+%	  $ =left= and =right= :
+%	  DS2 removes a set of columns
+%	  $ =|top/left|=, =|top/middle|=, =|top/right|=, =|middle/left|=,
+%	  =|middle/right|=, =|bottom/left|=, =|bottom/middle|=
+%	  and =|bottom/right|= :
+%	  DS2 is enclosed in DS1
+%
+%	Empty datasources are removed from the  result set. E.g., if DS2
+%	removes the top N rows of DS1,  Remainder is a list holding only
+%	=|bottom - DSRem|=.
+
+ds_subtract(DS1, DS2, Remainder) :-
+	ds_intersection(DS1, DS2, I), !,
+	ds_subtract_i(DS1, I, Remainder).
+ds_subtract(DS1, _, [all-DS1]).		% no intersection: DS1 is unaffected
+
+ds_subtract_i(DS, DS, Remainder) :- !,
+	Remainder = [].			% DS1 is entirely enclosed by DS2
+ds_subtract_i(cell_range(Sheet, SX,SY, EX,EY),
+	      cell_range(Sheet, SX,Sy, EX,Ey),
+	      Remainder) :- !,
+	Sy1 is Sy-1,
+	Ey1 is Ey+1,
+	Rem0 = [ top    - cell_range(Sheet, SX, SY,  EX, Sy1),  % top
+		 bottom - cell_range(Sheet, SX, Ey1, EX, EY)    % bottom
+	       ],
+	exclude(empty_value, Rem0, Remainder).
+ds_subtract_i(cell_range(Sheet, SX,SY, EX,EY),
+	      cell_range(Sheet, Sx,SY, Ex,EY),
+	      Remainder) :- !,
+	Sx1 is Sx-1,
+	Ex1 is Ex+1,
+	Rem0 = [ left  - cell_range(Sheet, SX,  SY, Sx1, EY),  % left
+		 right - cell_range(Sheet, Ex1, SY, EX, EY)    % right
+	       ],
+	exclude(empty_value, Rem0, Remainder).
+ds_subtract_i(cell_range(Sheet, SX,SY, EX,EY),
+	      cell_range(Sheet, Sx,Sy, Ex,Ey),
+	      Remainder) :-
+	Sx1 is Sx-1, Sy1 is Sy-1,
+	Ex1 is Ex+1, Ey1 is Ey+1,
+	Rem0 = [ top/left      - cell_range(Sheet, SX,   SY, Sx1, Sy1),
+		 top/middle    - cell_range(Sheet, Sx,   SY,  Ex, Sy1),
+		 top/right     - cell_range(Sheet, Ex1,  SY,  EX, Sy1),
+		 middle/left   - cell_range(Sheet, SX,   Sy, Sx1,  Ey),
+		 middle/right  - cell_range(Sheet, Ex1,  Sy,  EX,  Ey),
+		 bottom/left   - cell_range(Sheet, SX,  Ey1, Sx1,  EY),
+		 bottom/middle - cell_range(Sheet, Sx,  Ey1,  Ex,  EY),
+		 bottom/right  - cell_range(Sheet, Ex1, Ey1,  EX,  EY)
+	       ],
+	exclude(empty_value, Rem0, Remainder).
+
+empty_value(_-DS) :-
+	ds_empty(DS).
 
 
 		 /*******************************
@@ -217,6 +315,34 @@ ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset,
 	W is EX-SX,
 	between(0,W,Offset),
 	CX is SX+Offset.
+
+%%	ds_row_slice(+DS, +Offset, +Height, -Slice) is det.
+%
+%	True when Slice is  a  horizontal   slice  from  DS, starting at
+%	Offset (0-based, relative to DS) and being rows high.
+
+ds_row_slice(cell_range(Sheet, SX,SY, EX,EY), Offset, Height,
+	     cell_range(Sheet, SX,CY, EX,ZY)) :-
+	Height >= 0,
+	H is EY-SY,
+	between(0,H,Offset),
+	CY is SY+Offset,
+	ZY is CY+Height-1,
+	ZY =< EY.
+
+%%	ds_column_slice(+DS, +Offset, +Width, -Slice) is det.
+%
+%	True when Slice is a vertical slice from DS, starting at Offset
+%	(0-based, relative to DS) and being Columns wide.
+
+ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset, Width,
+		cell_range(Sheet, CX,SY, ZX,EY)) :-
+	Width >= 0,
+	W is EX-SX,
+	between(0,W,Offset),
+	CX is SX+Offset,
+	ZX is CX+Width-1,
+	ZX =< EX.
 
 %%	ds_unbounded_column_slice(+DS, +Offset, -Slice) is det.
 %
