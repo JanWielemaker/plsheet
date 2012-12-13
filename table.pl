@@ -1,5 +1,6 @@
 :- module(table,
 	  [ assert_tables/2,		% ?Sheet, ?Type
+	    assert_blocks/2,		% ?Sheet, ?Type
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
 
@@ -25,6 +26,10 @@
 
 /** <module> Detect tables
 */
+
+		 /*******************************
+		 *	       TABLES		*
+		 *******************************/
 
 %%	assert_tables(:Sheet, ?Type) is det.
 %
@@ -67,6 +72,50 @@ table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 	ds_union([DS|Headers], Union),
 	ds_id(DS, Id).
 
+
+		 /*******************************
+		 *	      BLOCKS		*
+		 *******************************/
+
+%%	assert_blocks(:Sheet, ?Type) is det.
+%
+%	Infer and assert identified blocks. Creates the following facts:
+%
+%	  * block(BlockID, Type, MainDS, HeaderDSList, UnionDS)
+%	  * cell_property(Sheet, X, Y, block(BlockID))
+
+assert_blocks(Sheet, Type) :-
+	Sheet = M:_,
+	blocks(Sheet, Type, Blocks),
+	forall(member(T, Blocks),
+	       assert_block(M:T)),
+	(   Blocks == []
+	->  true
+	;   assert_blocks(Sheet, Type)
+	).
+
+%%	blocks(?Sheet, +Type, -Blocks) is det.
+%
+%	Make an initial guess  at  all  blocks.   Block  is  a  list  of
+%	block(Data, Headers,Union).
+
+blocks(Sheet, Type, Blocks) :-
+	findall(SheetBlocks,
+		( setof(Block,
+			Type^block_in_sheet(Sheet, Type, Block),
+			SheetBlocks0),
+		  remove_inside(SheetBlocks0, SheetBlocks)
+		),
+		NestedBlocks),
+	append(NestedBlocks, Blocks).
+
+block_in_sheet(M:Sheet, Type, block(Id,Type,DS)) :-
+	ds_sheet(DS, Sheet),
+	cell_class(Type),
+	unassigned_anchor(DS, Type),
+	once(block(M:DS, Type)),
+	ds_id(DS, Id).
+
 %%	remove_inside(+Tables0, -Tables) is det.
 %
 %	Remove all tables that are entirely enclosed into other tables.
@@ -76,10 +125,10 @@ remove_inside(Tables0, Tables) :-
 
 remove_inside([], _, []).
 remove_inside([H|T0], All, T) :-
-	H = table(_,_,Union),
+	arg(3, H, Union),
 	member(T2, All),
 	T2 \== H,
-	T2 = table(_,_,U2),
+	arg(3, T2, U2),
 	ds_intersection(Union, U2, Union), !,
 	remove_inside(T0, All, T).
 remove_inside([H|T0], All, [H|T]) :-

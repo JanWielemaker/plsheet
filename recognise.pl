@@ -94,7 +94,11 @@ unassigned_anchor(M:cell_range(Sheet, SX,SY, _EX,_EY), Type) :-
 	).
 
 assigned(Sheet, X, Y) :-
-	cell_property(Sheet, X, Y, table(_)).
+	cell_property(Sheet, X, Y, P),
+	assigned(P).
+
+assigned(table(_)).
+assigned(block(_)).
 
 
 %%	block(:DataSource, ?Type) is nondet.
