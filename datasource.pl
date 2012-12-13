@@ -11,6 +11,7 @@
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
 	    ds_intersections/2,		% +DSList, -Pairs
+	    ds_subtract/3,		% +DS, +Subtract, -DSList
 
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
@@ -179,6 +180,36 @@ ds_intersections(ListOfDS, Pairs) :-
 		Pairs),
 	Pairs \== [].
 
+%%	ds_subtract(+DS1, +DS2, -Remainder:list(datasource)) is	multi.
+%
+%	Remainder is a list of datasources that describe the area of DS1
+%	that is not covered by DS2.
+
+ds_subtract(DS1, DS2, Remainder) :-
+	ds_intersection(DS1, DS2, I), !,
+	ds_subtract_i(DS1, I, Remainder).
+ds_subtract(DS1, _, DS1).		% no intersection: DS1 is unaffected
+
+ds_subtract_i(DS, DS, Remainder) :- !,
+	Remainder = [].			% DS1 is entirely enclosed by DS2
+ds_subtract_i(DS, IS, Remainder) :-
+	left_slice(DS, IS, Left).
+
+left_slice(DS, IS, Left) :-
+	ds_side(left, IS, ISLeft),
+	ds_side(left, DS, DSLeft),
+	Cols is DSLeft-ISLeft,
+	ds_column_slice(DS, 0, Cols, Left).
+
+ds_side(left,   cell_range(_Sheet, SX,_SY, _EX,_EY), SX).
+ds_side(right,  cell_range(_Sheet, _SX,_SY, EX,_EY), EX).
+ds_side(top,    cell_range(_Sheet, _SX,SY, _EX,_EY), SY).
+ds_side(bottom, cell_range(_Sheet, _SX,_SY, _EX,EY), EY).
+
+
+
+
+
 
 
 		 /*******************************
@@ -217,6 +248,20 @@ ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset,
 	W is EX-SX,
 	between(0,W,Offset),
 	CX is SX+Offset.
+
+%%	ds_column_slice(+DS, +Offset, +Width, -Slice) is det.
+%
+%	True when Slice is a vertical slice from DS, starting at Offset
+%	(0-based, relative to DS) and being Columns wide.
+
+ds_column_slice(cell_range(Sheet, SX,SY, EX,EY), Offset, Width,
+		cell_range(Sheet, CX,SY, ZX,EY)) :-
+	Width >= 0,
+	W is EX-SX,
+	between(0,W,Offset),
+	CX is SX+Offset,
+	ZX is CX+Width-1,
+	ZX =< EX.
 
 %%	ds_unbounded_column_slice(+DS, +Offset, -Slice) is det.
 %
