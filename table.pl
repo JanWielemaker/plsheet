@@ -5,7 +5,7 @@
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
 
-	    adjacent_objects/5,		% :Sheet, +Type, ?Obj1, ?Rel, ?Obj2
+	    adjacent_objects/5,		% :Sheet, +Type, ?Obj1, ?Obj2, ?Rel
 	    intersecting_objects/5,	% :Sheet, +Type, ?Tab1, ?Tab2, -Intersection
 	    color_sheets/2,		% :Sheet, ?What
 
@@ -250,12 +250,12 @@ right_columns(_, _, Tail, Tail).
 		 *	  TABLE RELATIONS	*
 		 *******************************/
 
-%%	adjacent_objects(:Sheet, +Type, ?Obj1, ?Rel, ?Obj2)
+%%	adjacent_objects(:Sheet, +Type, ?Obj1, ?Obj2, ?Rel)
 %
 %	True when Obj1 and Obj2 are adjacent in Sheet.  Rel is one of
 %	=above=, =below= =left_of= or =right_of=
 
-adjacent_objects(Sheet, Type, Obj1, Rel, Obj2) :-
+adjacent_objects(Sheet, Type, Obj1, Obj2, Rel) :-
 	must_be(oneof([table,block]), Type),
 	sheet_object(Sheet, Type, Obj1),
 	sheet_object(Sheet, Type, Obj2),
@@ -298,15 +298,38 @@ do_color_sheet(Sheet, What) :-
 color_adjacent(Sheet, What) :-
 	Sheet = M:_,
 	findall(color(T1,_)-color(T2,_),
-		( adjacent_objects(Sheet, What, Tab1, _, Tab2),
+		( (   adjacent_objects(Sheet, What, Tab1, Tab2, _)
+		  ;   intersecting_objects(Sheet, What, Tab1, Tab2, _)
+		  ),
 		  object_id(Tab1, T1),
 		  object_id(Tab2, T2)
 		),
 		Pairs),
+	assign_vars(Pairs),
 	maplist(color_constraint, Pairs),
 	term_variables(Pairs, Colors),
 	label(Colors), !,
+	pp(Pairs),
 	maplist(assign_color(M), Pairs).
+
+%%	assign_vars(+Pairs)
+%
+%	Make sure each object id is associated with a unique variable.
+
+assign_vars(List) :-
+	empty_assoc(B0),
+	assign_vars(List, B0).
+
+assign_vars([], _).
+assign_vars([color(O1,C1)-color(O2,C2)|T], B0) :-
+	assign_var(O1, C1, B0, B1),
+	assign_var(O2, C2, B1, B2),
+	assign_vars(T, B2).
+
+assign_var(Name, Var, B, B) :-
+	get_assoc(Name, B, Var), !.
+assign_var(Name, Var, B0, B) :-
+	put_assoc(Name, B0, Var, B).
 
 color_constraint(color(_,C1)-color(_,C2)) :-
 	C1 in 1..4,
