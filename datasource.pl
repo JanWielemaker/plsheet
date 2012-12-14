@@ -1,6 +1,8 @@
 :- module(datasource,
 	  [ ds_sheet/2,			% +DS, -Sheet
 	    ds_size/3,			% +DS, -Columns, -Rows
+	    ds_empty/1,			% +DS
+	    ds_side/3,			% ?Side, ?DS, ?RowCol
 	    ds_id/2,			% ?DS, ?Id
 	    ds_id/3,			% ?DS, ?Id, ?Type
 
@@ -39,6 +41,26 @@ ds_sheet(cell_range(Sheet, _,_, _,_), Sheet).
 ds_size(cell_range(_Sheet, SX,SY, EX,EY), Columns, Rows) :-
 	Columns is EX-SX+1,
 	Rows is EY-SY+1.
+
+%%	ds_side(?Which, ?DS, ?Value)
+%
+%	True when Value is the row/column of   the indicated side of the
+%	datasource. Which is one of =left=, =right=, =top= or =bottom=.
+
+ds_side(left,   cell_range(_Sheet, SX,_SY, _EX,_EY), SX).
+ds_side(right,  cell_range(_Sheet, _SX,_SY, EX,_EY), EX).
+ds_side(top,    cell_range(_Sheet, _SX,SY, _EX,_EY), SY).
+ds_side(bottom, cell_range(_Sheet, _SX,_SY, _EX,EY), EY).
+
+%%	ds_empty(+DS) is semidet.
+%
+%	True if DS is empty (contains no cells)
+
+ds_empty(cell_range(_Sheet, SX,SY, EX,EY)) :-
+	(   EX < SX
+	->  true
+	;   EY < SY
+	).
 
 %%	ds_id(+DS, -ID) is det.
 %%	ds_id(-DS, +ID) is det.
@@ -192,43 +214,21 @@ ds_subtract(DS1, _, DS1).		% no intersection: DS1 is unaffected
 
 ds_subtract_i(DS, DS, Remainder) :- !,
 	Remainder = [].			% DS1 is entirely enclosed by DS2
-ds_subtract_i(DS, IS, Remainder) :-
-	findall(Slice, slice(_, DS, IS, Slice), Slices),
-	Remainder = Slices.
-
-slice(left, DS, IS, LeftSlice) :-
-	ds_side(left, IS, ISLeft),
-	ds_side(left, DS, DSLeft),
-	Cols is ISLeft-DSLeft,
-	Cols > 0,
-	ds_column_slice(DS, 0, Cols, LeftSlice).
-slice(right, DS, IS, RightSlice) :-
-	ds_side(right, IS, ISRight),
-	ds_side(right, DS, DSRight),
-	Cols is DSRight-ISRight,
-	Cols > 0,
-	ds_size(DS, Width, _),
-	Col0 is Width-Cols,
-	ds_column_slice(DS, Col0, Cols, RightSlice).
-slice(top, DS, IS, TopSlice) :-
-	ds_side(top, IS, ISTop),
-	ds_side(top, DS, DSTop),
-	Rows is ISTop-DSTop,
-	Rows > 0,
-	ds_row_slice(DS, 0, Rows, TopSlice).
-slice(right, DS, IS, BottomSlice) :-
-	ds_side(bottom, IS, ISBottom),
-	ds_side(bottom, DS, DSBottom),
-	Rows is DSBottom-ISBottom,
-	Rows > 0,
-	ds_size(DS, _, Height),
-	Row0 is Height-Rows,
-	ds_row_slice(DS, Row0, Rows, BottomSlice).
-
-ds_side(left,   cell_range(_Sheet, SX,_SY, _EX,_EY), SX).
-ds_side(right,  cell_range(_Sheet, _SX,_SY, EX,_EY), EX).
-ds_side(top,    cell_range(_Sheet, _SX,SY, _EX,_EY), SY).
-ds_side(bottom, cell_range(_Sheet, _SX,_SY, _EX,EY), EY).
+ds_subtract_i(cell_range(Sheet, SX,SY, EX,EY),
+	      cell_range(Sheet, Sx,Sy, Ex,Ey),
+	      Remainder) :-
+	Sx1 is Sx-1, Sy1 is Sy-1,
+	Ex1 is Ex+1, Ey1 is Ex+1,
+	Rem0 = [ cell_range(Sheet, SX, SY, Sx1, Sy1), % top-left
+		 cell_range(Sheet, Sx, SY, Ex, Sy1),  % top-middle
+		 cell_range(Sheet, Ex1, SY, EX, Sy1), % top-right
+		 cell_range(Sheet, SX, Sy, Sx1, Ey),  % middle-left
+		 cell_range(Sheet, Ex1, Sy, EX, Ey),  % middle-right
+		 cell_range(Sheet, SX, Ey1, Ex1, EY), % bottom-left
+		 cell_range(Sheet, Sx, Ey1, Ex, EY),  % bottom-middle
+		 cell_range(Sheet, Sx1,Sy1, EX,EY)    % bottom-right
+	       ],
+	exclude(ds_empty, Rem0, Remainder).
 
 
 		 /*******************************
