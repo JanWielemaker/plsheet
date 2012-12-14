@@ -29,8 +29,12 @@ table.spreadsheet td.c3
 { background-color:#70e1d2;
 }
 
-table.spreadsheet td.c3
+table.spreadsheet td.c4
 { background-color:#7fd8ff;
+}
+
+table.spreadsheet td.c5
+{ background-color:#78f0d3;
 }
 
 table.spreadsheet td.float,td.percentage

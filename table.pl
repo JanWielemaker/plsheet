@@ -334,9 +334,12 @@ assign_var(Name, Var, B, B) :-
 assign_var(Name, Var, B0, B) :-
 	put_assoc(Name, B0, Var, B).
 
+max_colors(10).
+
 color_constraint(color(_,C1)-color(_,C2)) :-
-	C1 in 1..4,
-	C2 in 1..4,
+	max_colors(Max),
+	C1 in 1..Max,
+	C2 in 1..Max,
 	C1 #\= C2.
 
 assign_color(M, color(T1,C1)-color(T2,C2)) :-
