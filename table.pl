@@ -313,7 +313,6 @@ color_adjacent(Sheet, What) :-
 	maplist(color_constraint, Pairs),
 	term_variables(Pairs, Colors),
 	label(Colors), !,
-	pp(Pairs),
 	maplist(assign_color(M), Pairs).
 
 %%	assign_vars(+Pairs)
