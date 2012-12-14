@@ -16,6 +16,7 @@
 :- use_module(ods_table).
 :- use_module(data).
 :- use_module(library(lists)).
+:- use_module(library(pairs)).
 :- use_module(library(apply)).
 :- use_module(library(error)).
 :- use_module(library(clpfd)).
@@ -121,14 +122,17 @@ resolve_intersection(B1, B2, union(B1,B2,Problems)) :-
 	object_union(B1, Union1),
 	object_union(B2, Union2),
 	ds_union(Union1, Union2, Union),
-	ds_sheet(Union1, Sheet),
-	findall(cell(Sheet,X,Y,Class),
-		( ds_inside(Union, X, Y),
-		  \+ ds_inside(Union1, X, Y),
-		  \+ ds_inside(Union2, X, Y),
-		  cell_class(Sheet,X,Y,Class)
-		),
-		Problems).
+	ds_subtract(Union1, Union, LocRest0),
+	pairs_values(LocRest0, Rest0),
+	maplist(ds_subtract(Union2), Rest0, NestedRests),
+	append(NestedRests, LocRests),
+	pairs_values(LocRests, Rests),
+	exclude(ds_empty_cells, Rests, Problems).
+
+ds_empty_cells(DS) :-
+	ds_sheet(DS, Sheet),
+	forall(ds_inside(DS, X, Y),
+	       cell_class(Sheet,X,Y,empty)).
 
 
 		 /*******************************

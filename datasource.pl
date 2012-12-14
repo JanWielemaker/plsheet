@@ -14,7 +14,7 @@
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
 	    ds_intersections/2,		% +DSList, -Pairs
-	    ds_subtract/3,		% +DS, +Subtract, -DSList
+	    ds_subtract/3,		% +Subtract, +From, -DSList
 
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
@@ -212,7 +212,7 @@ ds_intersections(ListOfDS, Pairs) :-
 		Pairs),
 	Pairs \== [].
 
-%%	ds_subtract(+DS1, +DS2,
+%%	ds_subtract(+Subtract, +From,
 %%		    -Remainder:list(pair(where-datasource))) is det.
 %
 %	Remainder is a list of pairs   of the form <location>-datasource
@@ -220,24 +220,24 @@ ds_intersections(ListOfDS, Pairs) :-
 %	Defined locations are:
 %
 %	  $ =all= :
-%	  DS1 is unaffected
+%	  From is unaffected
 %	  $ =top= and =bottom= :
-%	  DS2 removes a set of rows
+%	  Subtract removes a set of rows
 %	  $ =left= and =right= :
-%	  DS2 removes a set of columns
+%	  Subtract removes a set of columns
 %	  $ =|top/left|=, =|top/middle|=, =|top/right|=, =|middle/left|=,
 %	  =|middle/right|=, =|bottom/left|=, =|bottom/middle|=
 %	  and =|bottom/right|= :
-%	  DS2 is enclosed in DS1
+%	  Subtract is enclosed in From
 %
-%	Empty datasources are removed from the  result set. E.g., if DS2
-%	removes the top N rows of DS1,  Remainder is a list holding only
-%	=|bottom - DSRem|=.
+%	Empty datasources are removed from  the   result  set.  E.g., if
+%	Subtract removes the top N rows  of   From,  Remainder is a list
+%	holding only =|bottom - DSRem|=.
 
-ds_subtract(DS1, DS2, Remainder) :-
-	ds_intersection(DS1, DS2, I), !,
-	ds_subtract_i(DS1, I, Remainder).
-ds_subtract(DS1, _, [all-DS1]).		% no intersection: DS1 is unaffected
+ds_subtract(Subtract, From, Remainder) :-
+	ds_intersection(Subtract, From, I), !,
+	ds_subtract_i(From, I, Remainder).
+ds_subtract(_, From, [all-From]).	% no intersection: From is unaffected
 
 ds_subtract_i(DS, DS, Remainder) :- !,
 	Remainder = [].			% DS1 is entirely enclosed by DS2
