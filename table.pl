@@ -108,6 +108,14 @@ resolve_intersections(Blocks0, Blocks) :-
 	;   pp(Intersections)
 	).
 
+%%	block_intersection(+Blocks:list, -Intersection) is nondet.
+%
+%	True when Intersection describes  an   intersection  between two
+%	datablocks  and  a  list  of  possible   ways  to  resolve  this
+%	intersection.
+%
+%	@param Intersection is a term i(B1,B2,Resolutions)
+
 block_intersection(Blocks, i(B1,B2,Resolutions)) :-
 	member(B1, Blocks),
 	member(B2, Blocks),
@@ -117,6 +125,15 @@ block_intersection(Blocks, i(B1,B2,Resolutions)) :-
 	ds_intersection(Union1, Union2, _),
 	findall(Resolve, resolve_intersection(B1, B2, Resolve),
 		Resolutions).
+
+%%	resolve_intersection(+B1, +B2, -Resolution) is nondet.
+%
+%	Resolve an intersection between B1 and B2.  Resolutions:
+%
+%	  * union(B1,B2,Problems)
+%	  Create a union.  Problems are datasources that are included
+%	  in the new union and nor part of B1, neither of B2 and are
+%	  not empty.
 
 resolve_intersection(B1, B2, union(B1,B2,Problems)) :-
 	object_union(B1, Union1),

@@ -14,7 +14,7 @@
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
 	    ds_intersections/2,		% +DSList, -Pairs
-	    ds_subtract/3,		% +DS, +Subtract, -DSList
+	    ds_subtract/3,		% +Subtract, +From, -DSList
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
 	    ds_column_slice/3,		% +DS1, ?Offset, ?Slice
@@ -22,6 +22,7 @@
 	    ds_grow/3			% +DS0, +Offset, -DS
 	  ]).
 :- use_module(ods_table).
+:- use_module(library(apply)).
 
 
 		 /*******************************
@@ -215,7 +216,7 @@ ds_intersections(ListOfDS, Pairs) :-
 %%		    -Remainder:list(pair(where-datasource))) is det.
 %
 %	Remainder is a list of pairs   of the form <location>-datasource
-%	that describes the area of  DS1  that   is  not  covered by DS2.
+%	that describes the area of From that is not covered by Subtract.
 %	Defined locations are:
 %
 %	  $ =all= :
