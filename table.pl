@@ -92,6 +92,8 @@ table_in_sheet(M:Sheet, Type, table(Id,Type,DS,Headers,Union)) :-
 %	    - create a union from the intersecting blocks
 %	    - Split into independent rectangles
 %	  - Optionally join adjacent
+%
+%	@param Type is the cell-type (=string=, =float=, ...)
 
 data_blocks(Sheet, Type, Blocks) :-
 	findall(Block,

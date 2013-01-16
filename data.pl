@@ -22,6 +22,7 @@
 	assert_table(:),
 	assert_block(:),
 	sheet_table(:, ?),
+	sheet_object(:, ?, ?),
 	assert_object_property(:, +),
 	assert_cell_property(:, +, +, +),
 	cell_property(:,?,?,?),

@@ -240,5 +240,6 @@ sheet_bb(M, Sheet, SX,SY,EX,EY) :-
 	max_list(AtRow, EY).
 
 cell_exists(M:Sheet,X,Y) :-
-	cell(M:Sheet, X,Y, _,_,_,_,_).
+	cell(M:Sheet, X,Y, _,_,_,_,_),
+	\+ empty_cell(M:Sheet, X, Y).
 
