@@ -14,8 +14,7 @@
 	    ds_union/3,			% +DS1, +DS2, -DS
 	    ds_union/2,			% +DSList, -DS
 	    ds_intersections/2,		% +DSList, -Pairs
-	    ds_subtract/3,		% +Subtract, +From, -DSList
-
+	    ds_subtract/3,		% +DS, +Subtract, -DSList
 	    ds_row_slice/3,		% +DS1, ?Offset, ?Slice
 	    ds_unbounded_row_slice/3,	% +DS1, +Offset, ?Slice
 	    ds_column_slice/3,		% +DS1, ?Offset, ?Slice
