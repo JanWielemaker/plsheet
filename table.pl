@@ -104,7 +104,11 @@ data_blocks(Sheet, Type, Blocks) :-
 	resolve_intersections(Blocks0, Blocks).
 
 resolve_intersections(Blocks0, Blocks) :-
-	findall(I, block_intersection(Blocks0, I), Intersections),
+	findall(i(B1,B2,Resolutions),
+		( block_intersection(Blocks0, B1, B2),
+		  intersection_resolutions(B1, B2, Resolutions)
+		),
+		Intersections),
 	(   Intersections == []
 	->  Blocks = Blocks0
 	;   pp(Intersections)
@@ -118,13 +122,15 @@ resolve_intersections(Blocks0, Blocks) :-
 %
 %	@param Intersection is a term i(B1,B2,Resolutions)
 
-block_intersection(Blocks, i(B1,B2,Resolutions)) :-
+block_intersection(Blocks, B1, B2) :-
 	member(B1, Blocks),
 	member(B2, Blocks),
-	B1 \== B2,
+	B1 @> B2,
 	object_union(B1, Union1),
 	object_union(B2, Union2),
-	ds_intersection(Union1, Union2, _),
+	ds_intersection(Union1, Union2, _).
+
+intersection_resolutions(B1, B2, Resolutions) :-
 	findall(Resolve, resolve_intersection(B1, B2, Resolve),
 		Resolutions).
 
