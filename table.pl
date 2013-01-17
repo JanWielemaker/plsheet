@@ -19,7 +19,8 @@
 :- use_module(library(pairs)).
 :- use_module(library(apply)).
 :- use_module(library(error)).
-:- use_module(library(clpfd)).
+:- use_module(library(clpfd), except([transpose/2])).
+:- use_module(library(ugraphs)).
 
 :- meta_predicate
 	tables(:, ?, -),
@@ -104,6 +105,10 @@ data_blocks(Sheet, Type, Blocks) :-
 	resolve_intersections(Blocks0, Blocks).
 
 resolve_intersections(Blocks0, Blocks) :-
+	findall(B1-B2, block_intersection(Blocks0, B1, B2), Pairs),
+	partition_graph(Pairs, Sets),
+	maplist(block_union, Sets, Blocks).
+resolve_intersections(Blocks0, Blocks) :-
 	findall(i(B1,B2,Resolutions),
 		( block_intersection(Blocks0, B1, B2),
 		  intersection_resolutions(B1, B2, Resolutions)
@@ -125,7 +130,7 @@ resolve_intersections(Blocks0, Blocks) :-
 block_intersection(Blocks, B1, B2) :-
 	member(B1, Blocks),
 	member(B2, Blocks),
-	B1 @> B2,
+	B1 \== B2,
 	object_union(B1, Union1),
 	object_union(B2, Union2),
 	ds_intersection(Union1, Union2, _).
@@ -158,6 +163,51 @@ ds_empty_cells(DS) :-
 	ds_sheet(DS, Sheet),
 	forall(ds_inside(DS, X, Y),
 	       cell_class(Sheet,X,Y,empty)).
+
+
+%%	block_union(+Blocks, -Block) is det.
+%
+%	True when Block is the union of Blocks.
+%
+%	@tbd	What should we do with the new parts that are included?
+
+block_union([H|T], Union) :-
+	block_union_list(T, H, Union).
+
+block_union_list([], Union, Union).
+block_union_list([H|T], Union0, Union) :-
+	block_union(H, Union0, Union1),
+	block_union_list(T, Union1, Union).
+
+block_union(block(_, Type1, DS1),
+	    block(_, Type2, DS2),
+	    block(Id, Type, DS)) :-
+	ds_union(DS1, DS2, DS),
+	ds_id(DS, Id),
+	type_union(Type1, Type2, Type).
+
+type_union(Type1, Type2, Type) :-
+	(   Type1 = Type2
+	->  Type = Type1
+	;   Type = hybrid
+	).
+
+
+%%	partition_graph(+Edges, -VerticeSets) is det.
+%
+%	Partition a graph into a set of sets of connected vertices.
+
+partition_graph(Edges, VerticeSets) :-
+	vertices_edges_to_ugraph([], Edges, Graph),
+	partition_graph2(Graph, VerticeSets).
+
+partition_graph2([], []).
+partition_graph2(Graph, [Set1|Sets]) :-
+	Graph = [V0-_|_],
+	reachable(V0, Graph, Set1),
+	del_vertices(Graph, Set1, Graph2),
+	partition_graph2(Graph2, Sets).
+
 
 
 		 /*******************************
