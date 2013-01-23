@@ -126,6 +126,9 @@ archive_dom(Archive, DOM, Options) :-
 %	    - cell(Table, ID, Value, Type, Formula, Style, Annotation)
 %	    - span(ID, IDBase)
 %	    - style(Style, Properties)
+%
+%	Does nothing if the spreadsheet is  already loaded in the target
+%	module. To force reloading, first use ods_unload/0.
 
 ods_load(Module:DOM) :-
 	nonvar(DOM),
@@ -139,18 +142,23 @@ ods_load(Module:Spec) :-
 	;   uri_file_name(URI, Spec),
 	    File = Spec
 	),
-	statistics(cputime, CPU0),
-	ods_DOM(File, DOM, []),
-	dynamic_decls(Module),
-	ods_load(Module:DOM),
-	statistics(cputime, CPU1),
-	CPU is CPU1-CPU0,
-	predicate_property(Module:sheet(_,_), number_of_clauses(Sheets)),
-	predicate_property(Module:cell(_,_,_,_,_,_,_), number_of_clauses(Cells)),
-	print_message(informational,
-		      ods(loaded(Module:Spec, CPU, Sheets, Cells))),
-	retractall(ods_spreadsheet(URI, _)),
-	assertz(ods_spreadsheet(URI, Module)).
+	(   ods_spreadsheet(URI, Module)
+	->  true
+	;   statistics(cputime, CPU0),
+	    ods_DOM(File, DOM, []),
+	    dynamic_decls(Module),
+	    ods_load(Module:DOM),
+	    statistics(cputime, CPU1),
+	    CPU is CPU1-CPU0,
+	    predicate_property(Module:sheet(_,_),
+			       number_of_clauses(Sheets)),
+	    predicate_property(Module:cell(_,_,_,_,_,_,_),
+			       number_of_clauses(Cells)),
+	    print_message(informational,
+			  ods(loaded(Module:Spec, CPU, Sheets, Cells))),
+	    retractall(ods_spreadsheet(URI, _)),
+	    assertz(ods_spreadsheet(URI, Module))
+	).
 
 %%	ods_ensure_loaded(+URL, -Module) is semidet.
 %
