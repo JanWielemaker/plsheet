@@ -192,6 +192,17 @@ type_union(Type1, Type2, Type) :-
 	;   Type = hybrid
 	).
 
+%%	block_union_new_non_empty(+Blocks, -Union, -NonEmptyBlocks) is det.
+%
+%	Determine the union of Blocks and   unify NonEmptyDS with a list
+%	of additional blocks that were added to   Union and are not part
+%	of any block in Blocks.
+
+block_union_new_non_empty(Blocks, UnionBlock, NonEmptyDS) :-
+	block_union(Blocks, UnionBlock),
+	object_union(UnionBlock, Union),
+	maplist(object_union, Blocks, Parts),
+	tbd.
 
 %%	partition_graph(+Edges, -VerticeSets) is det.
 %
