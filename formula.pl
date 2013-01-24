@@ -1,5 +1,5 @@
 :- module(ods_formula,
-	  [ sheet_formula_groups/2,	% :Sheet, -Groups
+	  [ sheet_formula_groups/3,	% :Sheet, -Groups, -Singles
 	    generalize_formula/8	% +S0, +X0, +Y0, +F0, -S, -X, -Y, -F
 	  ]).
 :- use_module(library(record)).
@@ -21,9 +21,9 @@
 
 */
 
-%%	sheet_formula_groups(:Sheet, -Groups) is det.
+%%	sheet_formula_groups(:Sheet, -Groups, -Singles) is det.
 
-sheet_formula_groups(Sheet, Groups) :-
+sheet_formula_groups(Sheet, Groups, Singles) :-
 	findall(f(Sheet,X,Y,F),
 		cell_formula(Sheet, X, Y, F),
 		Formulas),
@@ -35,20 +35,58 @@ sheet_formula_groups(Sheet, Groups) :-
 	pairs_values(ByKey, CandidateGroups),
 	length(CandidateGroups, CCount),
 	debug(formula, '~D candidate groups', [CCount]),
-	maplist(make_groups, CandidateGroups, NestedGroups),
-	append(NestedGroups, Groups).
+	maplist(make_groups, CandidateGroups, NestedGroups, NestedSingles),
+	append(NestedGroups, Groups),
+	append(NestedSingles, Singles).
 
-make_groups([], []).
-make_groups([F0|FT], [g(P,[F0|Matching])|GT]) :-
+make_groups([], [], []).
+make_groups([F0|FT], Groups, Singles) :-
 	generalize_formula(F0, P),
 	partition(match_formula(P), FT, Matching, Rest),
 	length(Matching, Matches),
 	length(Rest, Left),
 	debug(formula, '~p: ~D matches; ~D left', [P, Matches, Left]),
-	make_groups(Rest, GT).
+	(   Matching \== []
+	->  make_group(P, [F0|Matching], G0),
+	    Groups = [G0|GT],
+	    RS = Singles
+	;   Groups = GT,
+	    Singles = [F0|RS]
+	),
+	make_groups(Rest, GT, RS).
 
 match_formula(P, F) :-
 	\+ \+ P = F.
+
+%%	make_group(+Pattern, +Matches, -Group)
+%
+%	Turn a set of matches into a group.  Groups is a term
+%	forall(Var in Values, Formula).
+%
+%	@param Pattern is a term f(S,X,Y,F), where S,X,Y are variables.
+%	@param Matches is a list of ground terms f(S,X,Y,F).
+
+make_group(P, Matches, Groups) :-
+	P = f(S,X,Y,_),
+	findall(b(S,X,Y), member(P,Matches), Bindings),
+	maplist(arg(1), Bindings, AllSheets), sort(AllSheets, Sheets),
+	maplist(arg(2), Bindings, AllXs),     sort(AllXs, Xs),
+	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
+	group(Sheets, Xs, Ys, P, Matches, Groups).
+
+group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Ys, F)]) :- !.
+group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Xs, F)]) :- !.
+group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
+group([S], Xs, Ys, P, Matches, Groups) :-
+	P = f(S,X,Y,_),
+	length(Xs, Xc),
+	length(Ys, Yc),
+	(   Xc < Yc
+	->  findall(G, (member(X,Xs), make_group(P, Matches, G)), NGroups)
+	;   findall(G, (member(Y,Ys), make_group(P, Matches, G)), NGroups)
+	),
+	append(NGroups, Groups).
+
 
 
 %%	generalize_formula(F0, F) is det.
