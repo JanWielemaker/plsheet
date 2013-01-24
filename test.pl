@@ -3,6 +3,7 @@
 :- use_module(table).
 :- use_module(data).
 :- use_module(labels).
+:- use_module(formula).
 :- use_module(webui).
 :- use_module(library(debug)).
 
