@@ -9,6 +9,7 @@
 :- use_module(library(pairs)).
 :- use_module(library(lists)).
 :- use_module(ods_table).
+:- use_module(varnames).
 
 :- record
 	map(sheet,x,y).
@@ -74,8 +75,10 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups).
 
-group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Ys, F)]) :- !.
-group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Xs, F)]) :- !.
+group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Ys, F)]) :- !,
+	name_variable(X, 'X').
+group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Xs, F)]) :- !,
+	name_variable(Y, 'Y').
 group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
 group([S], Xs, Ys, P, Matches, Groups) :-
 	P = f(S,X,Y,_),
@@ -113,6 +116,14 @@ generalize_formula(Map, cell(S0,X0,Y0), cell(S,X,Y)) :- !,
 	generalize_sheet(S0, Map, S),
 	generalize_x(X0, Map, X),
 	generalize_y(Y0, Map, Y).
+generalize_formula(Map,
+		   cell_range(S0,SX0,SY0,EX0,EY0),
+		   cell_range(S, SX, SY, EX, EY)) :- !,
+	generalize_sheet(S0, Map, S),
+	generalize_x(SX0, Map, SX),
+	generalize_y(SY0, Map, SY),
+	generalize_x(EX0, Map, EX),
+	generalize_y(EY0, Map, EY).
 generalize_formula(Map, From, To) :-
 	compound(From), !,
 	From =.. [Name|Args0],

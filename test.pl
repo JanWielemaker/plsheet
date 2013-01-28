@@ -4,6 +4,7 @@
 :- use_module(data).
 :- use_module(labels).
 :- use_module(formula).
+:- use_module(varnames).
 :- use_module(webui).
 :- use_module(library(debug)).
 
@@ -170,23 +171,42 @@ p(M:Sheet, X,Y) :-
 		 *	      FEEDBACK		*
 		 *******************************/
 
+println(X) :-
+	write_term(X, [ portray(true)/*,
+			attributes(portray)*/
+		      ]),
+	nl.
+
 :- multifile
 	user:portray/3,
 	user:message_property/2.
 
 user:portray(cell(Sheet,X,Y)) :-
-	integer(X),
-	column_name(X, C),
-	format('~q.~w~w', [Sheet, C, Y]).
+	column_print_name(X, C),
+	row_print_name(Y, R),
+	format('~q.~w~w', [Sheet, C, R]).
 user:portray(cell_range(Sheet,SX,SY,EX,EY)) :-
-	integer(SX), integer(EX),
-	column_name(SX, CS),
-	column_name(EX, CE),
+	column_print_name(SX, SC),
+	column_print_name(EX, EC),
+	row_print_name(SY, SR),
+	row_print_name(EY, ER),
 	(   atom(Sheet),
 	    \+ sheet_name_need_quotes(Sheet)
-	->  format('[~w.~w~w:~w~w]', [Sheet, CS,SY,CE,EY])
-	;   format('[\'~w\'.~w~w:~w~w]', [Sheet, CS,SY,CE,EY])
+	->  format('[~w.~w~w:~w~w]', [Sheet, SC,SR,EC,ER])
+	;   format('[\'~w\'.~w~w:~w~w]', [Sheet, SC,SR,EC,ER])
 	).
+
+column_print_name(X, C) :-
+	variable_name(X, C), !.
+column_print_name(X, C) :-
+	integer(X), !,
+	column_name(X, C).
+column_print_name(X, X).
+
+row_print_name(Y, R) :-
+	variable_name(Y, R), !.
+row_print_name(Y, Y).
+
 
 user:message_property(debug(ods(test(ok))), color(fg(green))).
 user:message_property(debug(ods(test(error))), color(fg(red))).
