@@ -75,11 +75,21 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups).
 
-group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Ys, F)]) :- !,
-	name_variable(X, 'X').
-group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Xs, F)]) :- !,
-	name_variable(Y, 'Y').
+group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Set, F)]) :- !,
+	name_variable(X, 'X'),
+	compress(Ys, Set).
+group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Set, F)]) :- !,
+	name_variable(Y, 'Y'),
+	compress(Xs, Set).
 group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
+group([S], Xs, Ys, f(S,X,Y,F), Matches,
+      [forall(area, [X in SetX, Y in SetY], F)]) :-
+	forall(( member(X,Xs),
+		 member(Y,Ys)
+	       ),
+	       memberchk(f(S,X,Y,_), Matches)), !,
+	compress(Xs, SetX),
+	compress(Ys, SetY).
 group([S], Xs, Ys, P, Matches, Groups) :-
 	P = f(S,X,Y,_),
 	length(Xs, Xc),
@@ -90,6 +100,27 @@ group([S], Xs, Ys, P, Matches, Groups) :-
 	),
 	append(NGroups, Groups).
 
+%%	compress(+List, -Description)
+%
+%	Create a short description of the elements in list using ranges.
+%	Ranges are expressed as Low-High.
+
+compress(List, Description) :-
+	sort(List, Sorted),
+	create_ranges(Sorted, Description).
+
+create_ranges([], []).
+create_ranges([Low|T0], [Low-High|T]) :-
+	range(Low, T0, High, T1),
+	High > Low, !,
+	create_ranges(T1, T).
+create_ranges([H|T0], [H|T]) :-
+	create_ranges(T0, T).
+
+range(Low, [Next|T0], High, T) :-
+	succ(Low, Next), !,
+	range(Next, T0, High, T).
+range(High, T, High, T).
 
 
 %%	generalize_formula(F0, F) is det.
