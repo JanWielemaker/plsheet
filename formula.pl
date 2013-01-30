@@ -1,6 +1,7 @@
 :- module(ods_formula,
 	  [ sheet_formula_groups/3,	% :Sheet, -Groups, -Singles
-	    generalize_formula/8	% +S0, +X0, +Y0, +F0, -S, -X, -Y, -F
+	    generalize_formula/8,	% +S0, +X0, +Y0, +F0, -S, -X, -Y, -F
+	    sheet_dependency_graph/2	% :Sheet, -DepGraph
 	  ]).
 :- use_module(library(record)).
 :- use_module(library(clpfd)).
@@ -8,14 +9,17 @@
 :- use_module(library(apply)).
 :- use_module(library(pairs)).
 :- use_module(library(lists)).
+:- use_module(library(ordsets)).
 :- use_module(ods_table).
+:- use_module(datasource).
 :- use_module(varnames).
 
 :- record
 	map(sheet,x,y).
 
 :- meta_predicate
-	sheet_formula_groups(:, -).
+	sheet_formula_groups(:, -),
+	sheet_dependency_graph(:, -).
 
 /** <module> Reason about formulas
 
@@ -191,3 +195,41 @@ generalize_cordinate(X0, F-T, X) :-
 	;   X = X0
 	).
 
+%%	sheet_dependency_graph(:Sheet, -UGraph) is det.
+%
+%	Create a UGraph that represents  the dependencies between cells.
+%	Nodes in the cells are terms cell(S,X,Y).
+
+sheet_dependency_graph(Sheet, Graph) :-
+	findall(Cell-Dep, cell_dependency(Sheet, Cell, Dep), Graph0),
+	sort(Graph0, Graph1),
+					% Add missing (source) nodes
+	pairs_keys_values(Graph1, Left, RightSets),
+	append(RightSets, Right0),
+	sort(Right0, Right),
+	ord_subtract(Right, Left, Sources),
+	maplist(pair_nil, Sources, SourceTerms),
+	ord_union(Graph1, SourceTerms, Graph).
+
+pair_nil(X, X-[]).
+
+cell_dependency(Sheet, cell(Sheet,X,Y), Inputs) :-
+	cell_formula(Sheet, X, Y, Formula),
+	formula_cells(Formula, Inputs0, []),
+	sort(Inputs0, Inputs).
+
+formula_cells(cell(S,X,Y), [cell(S,X,Y)|T], T) :- !.
+formula_cells(DataSource,  Cells, Rest) :-
+	DataSource = cell_range(_,_,_,_,_), !,
+	ds_sheet(DataSource, S),
+	findall(cell(S,X,Y), ds_inside(DataSource,X,Y), Cells, Rest).
+formula_cells(Compound, Cells, Rest) :-
+	compound(Compound), !,
+	Compound =.. [_|Args],
+	list_formula_cells(Args, Cells, Rest).
+formula_cells(_, Cells, Cells).
+
+list_formula_cells([], Cells, Cells).
+list_formula_cells([H|T], Cells, Rest) :-
+	formula_cells(H, Cells, Rest0),
+	list_formula_cells(T, Rest0, Rest).

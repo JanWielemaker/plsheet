@@ -7,6 +7,7 @@
 :- use_module(varnames).
 :- use_module(webui).
 :- use_module(library(debug)).
+:- use_module(library(graphml_ugraph)).
 
 :- initialization
 	start_server.
@@ -165,6 +166,33 @@ p(M:Sheet, X,Y) :-
 	M:cell(Sheet, Id, Value, Type, Formula, Style, _Annotation),
 	format('Value = ~q, Type = ~q, Formula = ~q, Style = ~q',
 	       [ Value, Type, Formula, Style] ).
+
+
+		 /*******************************
+		 *	   FORMULA-GRAPH	*
+		 *******************************/
+
+:- meta_predicate
+	formula_graph(:, +).
+
+formula_graph(Sheet, File) :-
+	sheet_dependency_graph(Sheet, UGraph),
+	graphml_write_ugraph(File, map_cell,
+			     [ key(node, sheet,  string),
+			       key(node, row,	 integer),
+			       key(node, column, integer)
+			     ],
+			     UGraph).
+
+map_cell(id, node(cell(MS,X,Y)), Id) :-
+	strip_module(MS, _, S),
+	with_output_to(atom(Id), print(cell(S,X,Y))).
+map_cell(sheet, node(cell(MS,_X,_Y)), S) :-
+	strip_module(MS, _, S).
+map_cell(column, node(cell(_,X,_)), AX) :-
+	atom_number(AX, X).
+map_cell(row, node(cell(_,_,Y)), AY) :-
+	atom_number(AY, Y).
 
 
 		 /*******************************
