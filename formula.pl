@@ -214,22 +214,30 @@ sheet_dependency_graph(Sheet, Graph) :-
 pair_nil(X, X-[]).
 
 cell_dependency(Sheet, cell(Sheet,X,Y), Inputs) :-
+	Sheet = M:_,
 	cell_formula(Sheet, X, Y, Formula),
-	formula_cells(Formula, Inputs0, []),
+	formula_cells(Formula, M, Inputs0, []),
 	sort(Inputs0, Inputs).
 
-formula_cells(cell(S,X,Y), [cell(S,X,Y)|T], T) :- !.
-formula_cells(DataSource,  Cells, Rest) :-
-	DataSource = cell_range(_,_,_,_,_), !,
-	ds_sheet(DataSource, S),
-	findall(cell(S,X,Y), ds_inside(DataSource,X,Y), Cells, Rest).
-formula_cells(Compound, Cells, Rest) :-
+formula_cells(cell(S,X,Y), M, [cell(M:S,X,Y)|T], T) :- !.
+formula_cells(DataSource, M,  Cells, Rest) :-
+	DataSource = cell_range(S,SX,SY,EX,EY), !,
+	debug(dep, 'DataSource: ~q', [DataSource]),
+	(   forall(ds_inside(DataSource,X,Y),
+		   \+ cell_formula(M:S,X,Y,_))
+	->  debug(dep, 'DataSource without formulas: ~p', [DataSource]),
+	    Cells = [cell_range(M:S,SX,SY,EX,EY)|Rest]
+	;   findall(cell(M:S,X,Y), ds_inside(DataSource,X,Y), Cells, Rest)
+	).
+formula_cells(ext(URL, DS), _M, Cells, Cells) :- !,
+	debug(dep, 'External ref: ~p ~p', [URL, DS]).
+formula_cells(Compound, M, Cells, Rest) :-
 	compound(Compound), !,
 	Compound =.. [_|Args],
-	list_formula_cells(Args, Cells, Rest).
-formula_cells(_, Cells, Cells).
+	list_formula_cells(Args, M, Cells, Rest).
+formula_cells(_, _, Cells, Cells).
 
-list_formula_cells([], Cells, Cells).
-list_formula_cells([H|T], Cells, Rest) :-
-	formula_cells(H, Cells, Rest0),
-	list_formula_cells(T, Rest0, Rest).
+list_formula_cells([], _, Cells, Cells).
+list_formula_cells([H|T], M, Cells, Rest) :-
+	formula_cells(H, M, Cells, Rest0),
+	list_formula_cells(T, M, Rest0, Rest).

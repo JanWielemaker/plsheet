@@ -1,5 +1,6 @@
 :- use_module(ods_table).
 :- use_module(recognise).
+:- use_module(datasource).
 :- use_module(table).
 :- use_module(data).
 :- use_module(labels).
@@ -178,20 +179,28 @@ p(M:Sheet, X,Y) :-
 formula_graph(Sheet, File) :-
 	sheet_dependency_graph(Sheet, UGraph),
 	graphml_write_ugraph(File, map_cell,
-			     [ key(node, sheet,  string),
-			       key(node, row,	 integer),
-			       key(node, column, integer)
+			     [ key(node, 'Label',  string),
+			       key(node, sheet,    string),
+			       key(node, workbook, string),
+			       key(node, row,	   int),
+			       key(node, column,   int)
 			     ],
 			     UGraph).
 
-map_cell(id, node(cell(MS,X,Y)), Id) :-
-	strip_module(MS, _, S),
-	with_output_to(atom(Id), print(cell(S,X,Y))).
-map_cell(sheet, node(cell(MS,_X,_Y)), S) :-
-	strip_module(MS, _, S).
-map_cell(column, node(cell(_,X,_)), AX) :-
+map_cell(Field, node(Node), Value) :-
+	map_node(Field, Node, Value).
+
+map_node(id, Node, Id) :- fail,
+	with_output_to(atom(Id), print(Node)).
+map_node('Label', cell(_, X, Y), Label) :-
+	column_print_name(X, C),
+	row_print_name(Y, R),
+	format(atom(Label), '~w~w', [C, R]).
+map_node(sheet, cell(_:S,_X,_Y), S).
+map_node(workbook, cell(M:_,_X,_Y), M).
+map_node(column, cell(_,X,_), AX) :-
 	atom_number(AX, X).
-map_cell(row, node(cell(_,_,Y)), AY) :-
+map_node(row, cell(_,_,Y), AY) :-
 	atom_number(AY, Y).
 
 
