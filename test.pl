@@ -183,7 +183,10 @@ formula_graph(Sheet, File) :-
 			       key(node, sheet,    string),
 			       key(node, workbook, string),
 			       key(node, row,	   int),
-			       key(node, column,   int)
+			       key(node, column,   int),
+			       key(node, r,        int),
+			       key(node, g,        int),
+			       key(node, b,        int)
 			     ],
 			     UGraph).
 
@@ -198,10 +201,65 @@ map_node('Label', cell(_, X, Y), Label) :-
 	format(atom(Label), '~w~w', [C, R]).
 map_node(sheet, cell(_:S,_X,_Y), S).
 map_node(workbook, cell(M:_,_X,_Y), M).
-map_node(column, cell(_,X,_), AX) :-
-	atom_number(AX, X).
-map_node(row, cell(_,_,Y), AY) :-
-	atom_number(AY, Y).
+map_node(column, cell(_,X,_), X).
+map_node(row, cell(_,_,Y), Y).
+map_node(r, cell(_:S,_,_), R) :-
+	assert_seen(S),
+	sheet_color(S, Color),
+	color_rgb(Color, R,_,_).
+map_node(g, cell(_:S,_,_), G) :-
+	sheet_color(S, Color),
+	color_rgb(Color, _,G,_).
+map_node(b, cell(_:S,_,_), B) :-
+	sheet_color(S, Color),
+	color_rgb(Color, _,_,B).
+
+:- dynamic seen/1.
+
+assert_seen(S) :-
+	seen(S), !.
+assert_seen(S) :-
+	assertz(seen(S)).
+
+color_rgb(Name, R, G, B) :-
+	new(C, colour(Name)),
+	get(C, red, R0), R is R0//256,
+	get(C, green, G0), G is G0//256,
+	get(C, blue, B0), B is B0//256.
+
+sheet_color('Macro',			    gray50).
+sheet_color('Parameters',		    green).
+sheet_color('Project',			    gray50).
+sheet_color('Technologiekeuzen',	    blue).
+sheet_color('Resultaten GUI',		    gray50).
+sheet_color('Stadsverkeer',		    gray50).
+sheet_color('Personenauto',		    gray50).
+sheet_color('Vrachtverkeer',		    gray50).
+sheet_color('GO WB',			    gray50).
+sheet_color('GO WN',			    gray50).
+sheet_color('GO Ut',			    gray50).
+sheet_color('Bedrijven Warmte',		    red).
+sheet_color('Chemie',			    gray50).
+sheet_color('Kunstmest',		    gray50).
+sheet_color('Staal',			    gray50).
+sheet_color('Landbouw',			    gray50).
+sheet_color('Elektriciteitsproductie',	    gray50).
+sheet_color('Elektriciteitsopslag',	    gray50).
+sheet_color('Elektriciteitsbalans',	    gray50).
+sheet_color('Elektriciteit productie uren', gray50).
+sheet_color('Vloeibare brandstoffen',	    gray50).
+sheet_color('Methaan',			    gray50).
+sheet_color('Waterstof',		    gray50).
+sheet_color('Diverse gegevens',		    gray50).
+sheet_color('Voorraden',		    gray50).
+sheet_color('Infrastructuur',		    gray50).
+sheet_color('Resultaatoverzicht',	    gray50).
+sheet_color('Dataset 1',		    yellow).
+sheet_color('Dataset 2',		    gray50).
+sheet_color('Dataset 3',		    gray50).
+sheet_color('Doelen',			    gray50).
+
+
 
 
 		 /*******************************

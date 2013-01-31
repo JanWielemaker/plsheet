@@ -4,7 +4,8 @@
 	    sheet_dependency_graph/2	% :Sheet, -DepGraph
 	  ]).
 :- use_module(library(record)).
-:- use_module(library(clpfd)).
+:- use_module(library(clpfd), except([transpose/2])).
+:- use_module(library(ugraphs)).
 :- use_module(library(debug)).
 :- use_module(library(apply)).
 :- use_module(library(pairs)).
@@ -209,7 +210,8 @@ sheet_dependency_graph(Sheet, Graph) :-
 	sort(Right0, Right),
 	ord_subtract(Right, Left, Sources),
 	maplist(pair_nil, Sources, SourceTerms),
-	ord_union(Graph1, SourceTerms, Graph).
+	ord_union(Graph1, SourceTerms, Graph2),
+	transpose(Graph2, Graph).
 
 pair_nil(X, X-[]).
 
