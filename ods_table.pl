@@ -94,7 +94,7 @@ Values are represented using the following conventions:
 :- dynamic
 	ods_spreadsheet/2.		% URL, Module
 
-%%	ods_DOM(+File -DOM, +Options) is det.
+%%	ods_DOM(+File, -DOM, +Options) is det.
 %
 %	DOM is the XML domtree of  the   content  file  of the given ODS
 %	document.
