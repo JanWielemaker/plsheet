@@ -178,6 +178,9 @@ p(M:Sheet, X,Y) :-
 
 formula_graph(Sheet, File) :-
 	sheet_dependency_graph(Sheet, UGraph),
+	cell_graph(UGraph, File).
+
+cell_graph(UGraph, File) :-
 	graphml_write_ugraph(File, map_cell,
 			     [ key(node, 'Label',  string),
 			       key(node, sheet,    string),
@@ -231,18 +234,18 @@ sheet_color('Macro',			    gray50).
 sheet_color('Parameters',		    green).
 sheet_color('Project',			    gray50).
 sheet_color('Technologiekeuzen',	    blue).
-sheet_color('Resultaten GUI',		    gray50).
-sheet_color('Stadsverkeer',		    gray50).
-sheet_color('Personenauto',		    gray50).
-sheet_color('Vrachtverkeer',		    gray50).
-sheet_color('GO WB',			    gray50).
-sheet_color('GO WN',			    gray50).
-sheet_color('GO Ut',			    gray50).
-sheet_color('Bedrijven Warmte',		    red).
-sheet_color('Chemie',			    gray50).
-sheet_color('Kunstmest',		    gray50).
-sheet_color('Staal',			    gray50).
-sheet_color('Landbouw',			    gray50).
+sheet_color('Resultaten GUI',		    red2).
+sheet_color('Stadsverkeer',		    salmon1).
+sheet_color('Personenauto',		    salmon2).
+sheet_color('Vrachtverkeer',		    salmon3).
+sheet_color('GO WB',			    goldenrod1).
+sheet_color('GO WN',			    goldenrod2).
+sheet_color('GO Ut',			    goldenrod3).
+sheet_color('Bedrijven Warmte',		    salmon4).
+sheet_color('Chemie',			    lightsalmon1).
+sheet_color('Kunstmest',		    lightsalmon2).
+sheet_color('Staal',			    lightsalmon3).
+sheet_color('Landbouw',			    lightsalmon4).
 sheet_color('Elektriciteitsproductie',	    gray50).
 sheet_color('Elektriciteitsopslag',	    gray50).
 sheet_color('Elektriciteitsbalans',	    gray50).
@@ -250,14 +253,14 @@ sheet_color('Elektriciteit productie uren', gray50).
 sheet_color('Vloeibare brandstoffen',	    gray50).
 sheet_color('Methaan',			    gray50).
 sheet_color('Waterstof',		    gray50).
-sheet_color('Diverse gegevens',		    gray50).
+sheet_color('Diverse gegevens',		    green4).
 sheet_color('Voorraden',		    gray50).
 sheet_color('Infrastructuur',		    gray50).
-sheet_color('Resultaatoverzicht',	    gray50).
-sheet_color('Dataset 1',		    yellow).
-sheet_color('Dataset 2',		    gray50).
-sheet_color('Dataset 3',		    gray50).
-sheet_color('Doelen',			    gray50).
+sheet_color('Resultaatoverzicht',	    red3).
+sheet_color('Dataset 1',		    yellow1).
+sheet_color('Dataset 2',		    yellow2).
+sheet_color('Dataset 3',		    yellow3).
+sheet_color('Doelen',			    red4).
 
 
 

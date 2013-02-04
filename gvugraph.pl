@@ -49,10 +49,14 @@ no_attrs(label, node(Node), Label) :-
 	dotty_process/1.
 
 run_dotty(Program, File) :-
-	process_create(path(Program), [File], [process(PID)]),
-	assert(dotty_process(PID)),
-	process_wait(PID, _),
-	retractall(dotty_process(PID)).
+	setup_call_cleanup(
+	    ( process_create(path(Program), [File], [process(PID)]),
+	      assert(dotty_process(PID))
+	    ),
+	    process_wait(PID, _),
+	    ( retractall(dotty_process(PID)),
+	      catch(delete_file(File), _, true)
+	    )).
 
 kill_dotties :-
 	forall(dotty_process(PID),
