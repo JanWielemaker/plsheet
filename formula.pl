@@ -1,7 +1,8 @@
 :- module(ods_formula,
 	  [ sheet_formula_groups/3,	% :Sheet, -Groups, -Singles
 	    generalize_formula/8,	% +S0, +X0, +Y0, +F0, -S, -X, -Y, -F
-	    sheet_dependency_graph/2	% :Sheet, -DepGraph
+	    sheet_dependency_graph/2,	% :Sheet, -DepGraph
+	    cell_dependency_graph/5	% :Sheet, +X, +Y, +Direction, -Graph
 	  ]).
 :- use_module(library(record)).
 :- use_module(library(clpfd), except([transpose/2])).
@@ -20,7 +21,8 @@
 
 :- meta_predicate
 	sheet_formula_groups(:, -),
-	sheet_dependency_graph(:, -).
+	sheet_dependency_graph(:, -),
+	cell_dependency_graph(:,+,+,+,-).
 
 /** <module> Reason about formulas
 
@@ -243,3 +245,62 @@ list_formula_cells([], _, Cells, Cells).
 list_formula_cells([H|T], M, Cells, Rest) :-
 	formula_cells(H, M, Cells, Rest0),
 	list_formula_cells(T, M, Rest0, Rest).
+
+%%	cell_dependency_graph(:Sheet, +X, +Y, +Direction, -Graph) is
+%	det.
+%
+%	True when Graph is an  Ugraph   expressing  the  dependencies of
+%	StartCell. Direction is one of =inputs=, =outputs= or =both=.
+%
+%	@tbd	Implement =outputs= and =both=. Probably need to
+%		materialize the dependecies for that.  We could do
+%		that while loading the spreadsheet?
+
+cell_dependency_graph(Sheet, X, Y, inputs, Graph) :- !,
+	input_graph(Sheet, X, Y, Graph).
+cell_dependency_graph(_,_,_,Dir,_) :-
+	must_be(oneof([inputs]), Dir).
+
+input_graph(Sheet, Col, Y, Graph) :-
+	column_x(Col, X),
+	Cell0 = cell(Sheet,X,Y),
+	empty_assoc(V0),
+	put_assoc(Cell0, V0, true, V1),
+	traverse_input_graph([Cell0], V1, Edges, []),
+	vertices_edges_to_ugraph([Cell0], Edges, Graph).
+
+traverse_input_graph([], _, Edges, Edges).
+traverse_input_graph([Cell0|CellT], Visited0, Edges, ETail) :-
+	inputs(Cell0, Inputs),
+	edges(Inputs, Cell0, Edges, Tail0),
+	update_visited(Inputs, Visited0, Visited1, NewInputs, CellT),
+	traverse_input_graph(NewInputs, Visited1, Tail0, ETail).
+
+inputs(cell(Sheet,X,Y), Inputs) :-
+	cell_formula(Sheet, X, Y, Formula), !,
+	Sheet = M:_,
+	formula_cells(Formula, M, Inputs, []).
+inputs(_, []).
+
+edges([], _, Edges, Edges).
+edges([H|T], V0, [H-V0|Edges], ET) :-
+	edges(T, V0, Edges, ET).
+
+update_visited([], Visited, Visited, Inputs, Inputs).
+update_visited([H|T], Visited0, Visited, Inputs0, Inputs) :-
+	get_assoc(H, Visited0, _), !,
+	update_visited(T, Visited0, Visited, Inputs0, Inputs).
+update_visited([H|T], Visited0, Visited, [H|Inputs1], Inputs) :-
+	put_assoc(H, Visited0, true, Visited1),
+	update_visited(T, Visited1, Visited, Inputs1, Inputs).
+
+
+column_x(Col, X) :-
+	atom(Col), !,
+	upcase_atom(Col, COL),
+	column_name(X, COL).
+column_x(Col, X) :-
+	integer(Col), !,
+	X = Col.
+column_x(Col, _) :-
+	type_error(column, Col).
