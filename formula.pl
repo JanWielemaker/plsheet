@@ -83,10 +83,8 @@ make_group(P, Matches, Groups) :-
 	group(Sheets, Xs, Ys, P, Matches, Groups).
 
 group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Set, F)]) :- !,
-	name_variable(X, 'X'),
 	compress(Ys, Set).
 group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Set, F)]) :- !,
-	name_variable(Y, 'Y'),
 	compress(Xs, Set).
 group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
 group([S], Xs, Ys, f(S,X,Y,F), Matches,
