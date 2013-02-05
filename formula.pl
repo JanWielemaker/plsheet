@@ -82,9 +82,9 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups).
 
-group([S], [X],  Ys, f(S,X,Y,F), _, [forall(col,   Y in Set, F)]) :- !,
+group([S], [X],  Ys, f(S,X,Y,F), _, [forall(row,   Y in Set, F)]) :- !,
 	compress(Ys, Set).
-group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(row,   X in Set, F)]) :- !,
+group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(col,   X in Set, F)]) :- !,
 	compress(Xs, Set).
 group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
 group([S], Xs, Ys, f(S,X,Y,F), Matches,
