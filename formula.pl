@@ -80,16 +80,17 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(1), Bindings, AllSheets), sort(AllSheets, Sheets),
 	maplist(arg(2), Bindings, AllXs),     sort(AllXs, Xs),
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
-	group(Sheets, Xs, Ys, P, Matches, Groups).
+	group(Sheets, Xs, Ys, P, Matches, Groups0),
+	maplist(ds_formula, Groups0, Groups).
 
 group([S], [X], [Y], P, _, [P]) :- !,
 	P = f(S,X,Y,_F),
 	assertion(ground(P)).
-group([S], [X],  Ys, f(S,X,Y,F), _, [forall(row,   Y in Set, F)]) :- !,
+group([S], [X],  Ys, f(S,X,Y,F), _, [forall(row,   Y in Set, f(S,X,Y,F))]) :- !,
 	compress(Ys, Set).
-group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(col,   X in Set, F)]) :- !,
+group([S], Xs,  [Y], f(S,X,Y,F), _, [forall(col,   X in Set, f(S,X,Y,F))]) :- !,
 	compress(Xs, Set).
-group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss, F)]) :- !.
+group(Ss,  [X], [Y], f(S,X,Y,F), _, [forall(sheet, S in Ss,  f(S,X,Y,F))]) :- !.
 group([S], Xs, Ys, f(S,X,Y,F), Matches,
       [forall(area, [X in SetX, Y in SetY], F)]) :-
 	forall(( member(X,Xs),
@@ -129,6 +130,38 @@ range(Low, [Next|T0], High, T) :-
 	succ(Low, Next), !,
 	range(Next, T0, High, T).
 range(High, T, High, T).
+
+
+%%	ds_formula(+Group, -DSFormula) is det.
+%
+%	Translate a formula using the  forall()   notation  above into a
+%	formula between data-sources. Some examples:
+%
+%	    * D1-D20 = A1-A20 + B1-B20
+
+ds_formula(forall(row, Y in [Ya-Yz], f(S,X,Y,F)),
+	   cell_range(S,X,Ya,X,Yz) = FDS) :- !,
+	range_formula(y(Y,Ya,Yz), F, FDS),
+	assertion(ground(FDS)).
+ds_formula(forall(col, X in [Xa-Xz], f(S,X,Y,F)),
+	   cell_range(S,Xa,Y,Xz,Y) = FDS) :- !,
+	range_formula(x(X,Xa,Xz), F, FDS),
+	assertion(ground(FDS)).
+ds_formula(Formula, Formula).		% TBD
+
+%%	range_formula(+Spec, +F, -FDS)
+
+range_formula(y(Y,Ya,Yz), cell(S,X,YF), cell_range(S,X,Ys,X,Ye)) :-
+	findall(YF, (Y=Ya; Y=Yz), [Ys,Ye]), !.
+range_formula(x(X,Xa,Xz), cell(S,XF,Y), cell_range(S,Xs,Y,Xe,Y)) :-
+	findall(XF, (X=Xa; X=Xz), [Xs,Xe]), !.
+range_formula(Y, From, To) :-
+	compound(From), !,
+	From =.. [Name|Args0],
+	maplist(range_formula(Y), Args0, Args),
+	To =.. [Name|Args].
+range_formula(_, Formula, Formula).
+
 
 
 %%	generalize_formula(F0, F) is det.
