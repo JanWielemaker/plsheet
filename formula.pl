@@ -1,5 +1,7 @@
 :- module(ods_formula,
-	  [ sheet_formula_groups/3,	% :Sheet, -Groups, -Singles
+	  [ sheet_ds_formulas/2,	% :Sheet, -DSFormulas
+	    sheet_formula_groups/3,	% :Sheet, -Groups, -Singles
+	    ds_formulas/2,		% +Formulas, -DSFormulas
 	    generalize_formula/8,	% +S0, +X0, +Y0, +F0, -S, -X, -Y, -F
 	    sheet_dependency_graph/2,	% :Sheet, -DepGraph
 	    cell_dependency_graph/5	% :Sheet, +X, +Y, +Direction, -Graph
@@ -12,6 +14,7 @@
 :- use_module(library(pairs)).
 :- use_module(library(lists)).
 :- use_module(library(ordsets)).
+:- use_module(library(thread)).
 :- use_module(ods_table).
 :- use_module(datasource).
 
@@ -19,6 +22,7 @@
 	map(sheet,x,y).
 
 :- meta_predicate
+	sheet_ds_formulas(:, -),
 	sheet_formula_groups(:, -),
 	sheet_dependency_graph(:, -),
 	cell_dependency_graph(:,+,+,+,-).
@@ -27,6 +31,17 @@
 
 
 */
+
+%%	sheet_ds_formulas(:Sheet, -Formulas) is det.
+%
+%	Formulas is a list of generalised formulas in Sheet
+
+sheet_ds_formulas(Sheet, DSFormulas) :-
+	sheet_formula_groups(Sheet, Groups, Singles),
+	append(Groups, Grouped),
+	append(Singles, Grouped, AllFormulas),
+	ds_formulas(AllFormulas, DSFormulas0),
+	sort(DSFormulas0, DSFormulas).
 
 %%	sheet_formula_groups(:Sheet, -Groups, -Singles) is det.
 
@@ -42,7 +57,8 @@ sheet_formula_groups(Sheet, Groups, Singles) :-
 	pairs_values(ByKey, CandidateGroups),
 	length(CandidateGroups, CCount),
 	debug(formula, '~D candidate groups', [CCount]),
-	maplist(make_groups, CandidateGroups, NestedGroups, NestedSingles),
+	concurrent_maplist(make_groups,
+			   CandidateGroups, NestedGroups, NestedSingles),
 	append(NestedGroups, Groups),
 	append(NestedSingles, Singles).
 
@@ -80,8 +96,7 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(2), Bindings, AllXs),     sort(AllXs, Xs),
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups0),
-	flatten(Groups0, Groups1),
-	ds_formulas(Groups1, Groups).
+	flatten(Groups0, Groups).
 
 group([S], [X], [Y], P, _, Result) :- !,
 	P = f(S,X,Y,F),
@@ -133,6 +148,8 @@ range(Low, [Next|T0], High, T) :-
 range(High, T, High, T).
 
 
+%%	ds_formulas(+Formulas:list, -DSFormulas:list) is det.
+
 ds_formulas(FL0, FL) :-
 	ds_formulas(FL0, FL1, []),
 	maplist(simplify_formula, FL1, FL).
@@ -149,14 +166,19 @@ ds_formulas([H|T], FL0, FL) :-
 %
 %	    * D1-D20 = A1-A20 + B1-B20
 
+ds_formula(f(S,X,Y,F), [cell(S,X,Y) = F|FL], FL) :- !.
 ds_formula(forall(_, _ in [], _), FL, FL) :- !.
 					% rows
 ds_formula(forall(row, Y in [Ya-Yz|T], P),
-	   [cell_range(S,X,Ya,X,Yz) = FDS|More], FL) :- !,
+	   [cell_range(S,X,Ya,X,Yz) = FDS|More], FL) :-
 	P = f(S,X,Y,F),
-	range_formula(y(Y,Ya,Yz), F, FDS),
+	range_formula(y(Y,Ya,Yz), F, FDS), !,
 	assertion(ground(FDS)),
 	ds_formula(forall(row, Y in T, P), More, FL).
+ds_formula(forall(row, Y in [Ya-Yz|T], P), FL0, FL) :- !,
+	numlist(Ya, Yz, YL),
+	append(YL, T, Ys),
+	ds_formula(forall(row, Y in Ys, P), FL0, FL).
 ds_formula(forall(row, Y in [Y0|Ys], P),
 	   [cell(S,X,Y0) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
@@ -165,11 +187,15 @@ ds_formula(forall(row, Y in [Y0|Ys], P),
 	ds_formula(forall(row, Y in Ys, P), More, FL).
 					% columns
 ds_formula(forall(col, X in [Xa-Xz|T], P),
-	   [cell_range(S,Xa,Y,Xz,Y) = FDS|More], FL) :- !,
+	   [cell_range(S,Xa,Y,Xz,Y) = FDS|More], FL) :-
 	P = f(S,X,Y,F),
-	range_formula(x(X,Xa,Xz), F, FDS),
+	range_formula(x(X,Xa,Xz), F, FDS), !,
 	assertion(ground(FDS)),
 	ds_formula(forall(col, X in T, P), More, FL).
+ds_formula(forall(col, X in [Xa-Xz|T], P), FL0, FL) :- !,
+	numlist(Xa, Xz, XL),
+	append(XL, T, Xs),
+	ds_formula(forall(row, X in Xs, P), FL0, FL).
 ds_formula(forall(col, X in [X0|Xs], P),
 	   [cell(S,X0,Y) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
@@ -206,11 +232,20 @@ ds_formula(forall(area, [X in [Xa-Xz|TX], Y in [Y0|TY]], P),
 		   More, FL0),
 	ds_formula(forall(area, [X in [Xa-Xz|TX], Y in TY], P),
 		   FL0, FL).
+ds_formula(forall(area, [X in [X0|TX], Y in [Y0|TY]], P),
+	   [ cell(S,X0,Y0) = FDS | More ], FL) :- !,
+	P = f(S,X,Y,F),
+	range_formula(xy(X,X0,X0,Y,Y0,Y0), F, FDS),
+	assertion(ground(FDS)),
+	ds_formula(forall(area, [X in TX, Y in [Y0|TY]], P),
+		   More, FL0),
+	ds_formula(forall(area, [X in [X0|TX], Y in TY], P),
+		   FL0, FL).
 
 ds_formula(Formula, [Formula|FL], FL).		% TBD
 
 
-%%	range_formula(+Spec, +F, -FDS)
+%%	range_formula(+Spec, +F, -FDS) is semidet.
 
 					% y...
 range_formula(y(Y,Ya,Ya), cell(S,X,YF), cell(S,X,Ys)) :-
@@ -234,6 +269,9 @@ range_formula(xy(X,Xa,Xz,Y,Ya,Yz),
 	      cell_range(S,Xs,Ys,Xe,Ye)) :-
 	findall(XF, (X=Xa; X=Xz), [Xs,Xe]),
 	findall(YF, (Y=Ya; Y=Yz), [Ys,Ye]), !.
+					% Cannot do these
+range_formula(_, cell(_,_,_), _) :- !, fail.
+range_formula(_, cell_range(_,_,_,_,_), _) :- !, fail.
 					% General recursion
 range_formula(Y, From, To) :-
 	compound(From), !,
