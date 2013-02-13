@@ -188,6 +188,24 @@ ds_formula(forall(area, [X in [Xa-Xz|TX], Y in [Ya-Yz|TY]], P),
 		   More, FL0),
 	ds_formula(forall(area, [X in [Xa-Xz|TX], Y in TY], P),
 		   FL0, FL).
+ds_formula(forall(area, [X in [X0|TX], Y in [Ya-Yz|TY]], P),
+	   [ cell_range(S,X0,Ya,X0,Yz) = FDS | More ], FL) :- !,
+	P = f(S,X,Y,F),
+	range_formula(xy(X,X0,X0,Y,Ya,Yz), F, FDS),
+	assertion(ground(FDS)),
+	ds_formula(forall(area, [X in TX, Y in [Ya-Yz|TY]], P),
+		   More, FL0),
+	ds_formula(forall(area, [X in [X0|TX], Y in TY], P),
+		   FL0, FL).
+ds_formula(forall(area, [X in [Xa-Xz|TX], Y in [Y0|TY]], P),
+	   [ cell_range(S,Xa,Y0,Xz,Y0) = FDS | More ], FL) :- !,
+	P = f(S,X,Y,F),
+	range_formula(xy(X,Xa,Xz,Y,Y0,Y0), F, FDS),
+	assertion(ground(FDS)),
+	ds_formula(forall(area, [X in TX, Y in [Y0|TY]], P),
+		   More, FL0),
+	ds_formula(forall(area, [X in [Xa-Xz|TX], Y in TY], P),
+		   FL0, FL).
 
 ds_formula(Formula, [Formula|FL], FL).		% TBD
 
