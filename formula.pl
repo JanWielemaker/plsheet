@@ -81,7 +81,7 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups0),
 	flatten(Groups0, Groups1),
-	ds_formulas(Groups1, Groups, []).
+	ds_formulas(Groups1, Groups).
 
 group([S], [X], [Y], P, _, Result) :- !,
 	P = f(S,X,Y,F),
@@ -132,6 +132,10 @@ range(Low, [Next|T0], High, T) :-
 	range(Next, T0, High, T).
 range(High, T, High, T).
 
+
+ds_formulas(FL0, FL) :-
+	ds_formulas(FL0, FL1, []),
+	maplist(simplify_formula, FL1, FL).
 
 ds_formulas([], FL, FL).
 ds_formulas([H|T], FL0, FL) :-
@@ -289,6 +293,21 @@ generalize_cordinate(X0, F-T, X) :-
 	    )
 	;   X = X0
 	).
+
+%%	simplify_formula(+FormulaIn, -FormulaOut) is det.
+%
+%	Replace single-cell ranges with a cell.
+
+simplify_formula(Var, Var) :-
+	var(Var), !.
+simplify_formula(cell_range(S,X,Y,X,Y), cell(S,X,Y)) :- !.
+simplify_formula(F0, F) :-
+	compound(F0), !,
+	F0 =.. [Name|Args0],
+	maplist(simplify_formula, Args0, Args),
+	F =.. [Name|Args].
+simplify_formula(F, F).
+
 
 %%	sheet_dependency_graph(:Sheet, -UGraph) is det.
 %
