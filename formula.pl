@@ -81,8 +81,7 @@ make_group(P, Matches, Groups) :-
 	maplist(arg(3), Bindings, AllYs),     sort(AllYs, Ys),
 	group(Sheets, Xs, Ys, P, Matches, Groups0),
 	flatten(Groups0, Groups1),
-	maplist(ds_formula, Groups1, Groups2),
-	flatten(Groups2, Groups).
+	ds_formulas(Groups1, Groups, []).
 
 group([S], [X], [Y], P, _, Result) :- !,
 	P = f(S,X,Y,F),
@@ -134,50 +133,60 @@ range(Low, [Next|T0], High, T) :-
 range(High, T, High, T).
 
 
-%%	ds_formula(+Group, -DSFormula) is det.
+ds_formulas([], FL, FL).
+ds_formulas([H|T], FL0, FL) :-
+	ds_formula(H, FL0, FL1),
+	ds_formulas(T, FL1, FL).
+
+%%	ds_formula(+Group, -DSFormula, ?Tail) is det.
 %
 %	Translate a formula using the  forall()   notation  above into a
 %	formula between data-sources. Some examples:
 %
 %	    * D1-D20 = A1-A20 + B1-B20
 
-ds_formula(forall(_, _ in [], _), []) :- !.
+ds_formula(forall(_, _ in [], _), FL, FL) :- !.
 					% rows
 ds_formula(forall(row, Y in [Ya-Yz|T], P),
-	   [cell_range(S,X,Ya,X,Yz) = FDS|More]) :- !,
+	   [cell_range(S,X,Ya,X,Yz) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
 	range_formula(y(Y,Ya,Yz), F, FDS),
 	assertion(ground(FDS)),
-	ds_formula(forall(row, Y in T, P), More).
+	ds_formula(forall(row, Y in T, P), More, FL).
 ds_formula(forall(row, Y in [Y0|Ys], P),
-	   [cell(S,X,Y0) = FDS|More]) :- !,
+	   [cell(S,X,Y0) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
 	range_formula(y(Y,Y0,Y0), F, FDS),
 	assertion(ground(FDS)),
-	ds_formula(forall(row, Y in Ys, P), More).
+	ds_formula(forall(row, Y in Ys, P), More, FL).
 					% columns
 ds_formula(forall(col, X in [Xa-Xz|T], P),
-	   [cell_range(S,Xa,Y,Xz,Y) = FDS|More]) :- !,
+	   [cell_range(S,Xa,Y,Xz,Y) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
 	range_formula(x(X,Xa,Xz), F, FDS),
 	assertion(ground(FDS)),
-	ds_formula(forall(col, X in T, P), More).
+	ds_formula(forall(col, X in T, P), More, FL).
 ds_formula(forall(col, X in [X0|Xs], P),
-	   [cell(S,X0,Y) = FDS|More]) :- !,
+	   [cell(S,X0,Y) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
 	range_formula(x(X,X0,X0), F, FDS),
 	assertion(ground(FDS)),
-	ds_formula(forall(col, X in Xs, P), More).
+	ds_formula(forall(col, X in Xs, P), More, FL).
 					% areas
-ds_formula(forall(area, [_ in [],_], _), []) :- !.
-ds_formula(forall(area, [_,_ in []], _), []) :- !.
-ds_formula(forall(area, [X in [Xa-Xz], Y in [Ya-Yz]], P),
-	   [ cell_range(S,Xa,Ya,Xz,Yz) = FDS ]) :- !,
+ds_formula(forall(area, [_ in [],_], _), FL, FL) :- !.
+ds_formula(forall(area, [_,_ in []], _), FL, FL) :- !.
+ds_formula(forall(area, [X in [Xa-Xz|TX], Y in [Ya-Yz|TY]], P),
+	   [ cell_range(S,Xa,Ya,Xz,Yz) = FDS | More ], FL) :- !,
 	P = f(S,X,Y,F),
 	range_formula(xy(X,Xa,Xz,Y,Ya,Yz), F, FDS),
-	assertion(ground(FDS)).
+	assertion(ground(FDS)),
+	ds_formula(forall(area, [X in TX, Y in [Ya-Yz|TY]], P),
+		   More, FL0),
+	ds_formula(forall(area, [X in [Xa-Xz|TX], Y in TY], P),
+		   FL0, FL).
 
-ds_formula(Formula, Formula).		% TBD
+ds_formula(Formula, [Formula|FL], FL).		% TBD
+
 
 %%	range_formula(+Spec, +F, -FDS)
 
