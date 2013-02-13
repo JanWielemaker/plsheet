@@ -14,7 +14,6 @@
 :- use_module(library(ordsets)).
 :- use_module(ods_table).
 :- use_module(datasource).
-:- use_module(varnames).
 
 :- record
 	map(sheet,x,y).
@@ -95,7 +94,7 @@ group([S], Xs,  [Y], f(S,X,Y,F), _, forall(col,   X in Set, f(S,X,Y,F))) :- !,
 	compress(Xs, Set).
 group(Ss,  [X], [Y], f(S,X,Y,F), _, forall(sheet, S in Ss,  f(S,X,Y,F))) :- !.
 group([S], Xs, Ys, f(S,X,Y,F), Matches,
-      [forall(area, [X in SetX, Y in SetY], F)]) :-
+      [forall(area, [X in SetX, Y in SetY], f(S,X,Y,F))]) :-
 	forall(( member(X,Xs),
 		 member(Y,Ys)
 	       ),
@@ -143,6 +142,7 @@ range(High, T, High, T).
 %	    * D1-D20 = A1-A20 + B1-B20
 
 ds_formula(forall(_, _ in [], _), []) :- !.
+					% rows
 ds_formula(forall(row, Y in [Ya-Yz|T], P),
 	   [cell_range(S,X,Ya,X,Yz) = FDS|More]) :- !,
 	P = f(S,X,Y,F),
@@ -155,6 +155,7 @@ ds_formula(forall(row, Y in [Y0|Ys], P),
 	range_formula(y(Y,Y0,Y0), F, FDS),
 	assertion(ground(FDS)),
 	ds_formula(forall(row, Y in Ys, P), More).
+					% columns
 ds_formula(forall(col, X in [Xa-Xz|T], P),
 	   [cell_range(S,Xa,Y,Xz,Y) = FDS|More]) :- !,
 	P = f(S,X,Y,F),
@@ -167,10 +168,20 @@ ds_formula(forall(col, X in [X0|Xs], P),
 	range_formula(x(X,X0,X0), F, FDS),
 	assertion(ground(FDS)),
 	ds_formula(forall(col, X in Xs, P), More).
+					% areas
+ds_formula(forall(area, [_ in [],_], _), []) :- !.
+ds_formula(forall(area, [_,_ in []], _), []) :- !.
+ds_formula(forall(area, [X in [Xa-Xz], Y in [Ya-Yz]], P),
+	   [ cell_range(S,Xa,Ya,Xz,Yz) = FDS ]) :- !,
+	P = f(S,X,Y,F),
+	range_formula(xy(X,Xa,Xz,Y,Ya,Yz), F, FDS),
+	assertion(ground(FDS)).
+
 ds_formula(Formula, Formula).		% TBD
 
 %%	range_formula(+Spec, +F, -FDS)
 
+					% y...
 range_formula(y(Y,Ya,Ya), cell(S,X,YF), cell(S,X,Ys)) :-
 	findall(YF, Y=Ya, [Ys]), !.
 range_formula(y(Y,Ya,Ya), cell_range(S,Xs,YFs,Xe,YFe),
@@ -178,13 +189,21 @@ range_formula(y(Y,Ya,Ya), cell_range(S,Xs,YFs,Xe,YFe),
 	findall(YFs-YFe, Y=Ya, [Ys-Ye]), !.
 range_formula(y(Y,Ya,Yz), cell(S,X,YF), cell_range(S,X,Ys,X,Ye)) :-
 	findall(YF, (Y=Ya; Y=Yz), [Ys,Ye]), !.
-range_formula(y(X,Xa,Xa), cell(S,XF,Y), cell(S,Xs,Y)) :-
+					% x...
+range_formula(x(X,Xa,Xa), cell(S,XF,Y), cell(S,Xs,Y)) :-
 	findall(XF, X=Xa, [Xs]), !.
 range_formula(x(X,Xa,Xa), cell_range(S,XFs,Ys,XFe,Ye),
 	                  cell_range(S,Xs,Ys,Xe,Ye)) :-
 	findall(XFs-XFe, X=Xa, [Xs-Xe]), !.
 range_formula(x(X,Xa,Xz), cell(S,XF,Y), cell_range(S,Xs,Y,Xe,Y)) :-
 	findall(XF, (X=Xa; X=Xz), [Xs,Xe]), !.
+					% xy...
+range_formula(xy(X,Xa,Xz,Y,Ya,Yz),
+	      cell(S,XF,YF),
+	      cell_range(S,Xs,Ys,Xe,Ye)) :-
+	findall(XF, (X=Xa; X=Xz), [Xs,Xe]),
+	findall(YF, (Y=Ya; Y=Yz), [Ys,Ye]), !.
+					% General recursion
 range_formula(Y, From, To) :-
 	compound(From), !,
 	From =.. [Name|Args0],
