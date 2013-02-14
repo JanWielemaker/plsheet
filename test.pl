@@ -262,7 +262,20 @@ sheet_color('Dataset 2',		    yellow2).
 sheet_color('Dataset 3',		    yellow3).
 sheet_color('Doelen',			    red4).
 
+:- dynamic ds_formula/2.
 
+ds_formulas :-
+	retractall(ds_formula(_,_)),
+	forall(sheet(S, _),
+	       ( format(user_error, 'Processing ~q ... ', [S]),
+		 time(sheet_ds_formulas(S, Formulas)),
+		 length(Formulas, Count),
+		 format(user_error, 'found ~D~n', [Count]),
+		 maplist(assert_formula, Formulas)
+	       )).
+
+assert_formula(Target = Formula) :-
+	assert(ds_formula(Target, Formula)).
 
 
 		 /*******************************

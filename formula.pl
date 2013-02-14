@@ -156,7 +156,12 @@ ds_formulas(FL0, FL) :-
 
 ds_formulas([], FL, FL).
 ds_formulas([H|T], FL0, FL) :-
-	ds_formula(H, FL0, FL1),
+	(   ds_formula(H, FL0, FL1)
+	->  true
+	;   gtrace,
+	    pp(H),
+	    ds_formula(H, FL0, FL1)
+	),
 	ds_formulas(T, FL1, FL).
 
 %%	ds_formula(+Group, -DSFormula, ?Tail) is det.
@@ -195,7 +200,7 @@ ds_formula(forall(col, X in [Xa-Xz|T], P),
 ds_formula(forall(col, X in [Xa-Xz|T], P), FL0, FL) :- !,
 	numlist(Xa, Xz, XL),
 	append(XL, T, Xs),
-	ds_formula(forall(row, X in Xs, P), FL0, FL).
+	ds_formula(forall(col, X in Xs, P), FL0, FL).
 ds_formula(forall(col, X in [X0|Xs], P),
 	   [cell(S,X0,Y) = FDS|More], FL) :- !,
 	P = f(S,X,Y,F),
@@ -264,6 +269,11 @@ range_formula(x(X,Xa,Xa), cell_range(S,XFs,Ys,XFe,Ye),
 range_formula(x(X,Xa,Xz), cell(S,XF,Y), cell_range(S,Xs,Y,Xe,Y)) :-
 	findall(XF, (X=Xa; X=Xz), [Xs,Xe]), !.
 					% xy...
+range_formula(xy(X,Xa,Xa,Y,Ya,Ya),
+	      cell_range(S,XFs,YFs,XFe,YFe),
+	      cell_range(S,Xs,Ys,Xe,Ye)) :-
+	findall(XFs-XFe, X=Xa, [Xs-Xe]),
+	findall(YFs-YFe, Y=Ya, [Ys-Ye]), !.
 range_formula(xy(X,Xa,Xz,Y,Ya,Yz),
 	      cell(S,XF,YF),
 	      cell_range(S,Xs,Ys,Xe,Ye)) :-
