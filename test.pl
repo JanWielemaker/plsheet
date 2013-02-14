@@ -263,6 +263,7 @@ sheet_color('Dataset 3',		    yellow3).
 sheet_color('Doelen',			    red4).
 
 :- dynamic ds_formula/2.
+:- dynamic ds_input/2.
 
 ds_formulas :-
 	retractall(ds_formula(_,_)),
@@ -277,6 +278,33 @@ ds_formulas :-
 assert_formula(Target = Formula) :-
 	assert(ds_formula(Target, Formula)).
 
+ds_graph :-
+	retractall(ds_input(_,_)),
+	forall(( ds_formula(Target, Formula),
+		 ds_member(TDS, Formula)
+	       ),
+	       assert(ds_input(Target, TDS))).
+
+ds_member(M, Formula) :-
+	sub_term(M, Formula),
+	compound(M),
+	(   M = cell(_,_,_)
+	->  true
+	;   M = cell_range(_,_,_,_,_)
+	).
+
+ds_set(Set) :-
+	findall(DS, ds(DS), All),
+	sort(All, Set).
+
+ds(DS) :-
+	ds_input(T,I),
+	(   to_ds(T, DS)
+	;   to_ds(I, DS)
+	).
+
+to_ds(cell(S,X,Y), cell_range(S,X,Y,X,Y)) :- !.
+to_ds(DS, DS).
 
 		 /*******************************
 		 *	      FEEDBACK		*
