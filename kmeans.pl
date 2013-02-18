@@ -54,11 +54,26 @@ k_cluster_t([H|T], Map, Centroites, Clusters) :-
 closest_centroit(C0, Centroites, I) :-
 	functor(Centroites, _, Arity),
 	arg(Arity, Centroites, CBest),
-	distance(CBest, C0, DBest),
+	pt_distance(CBest, C0, DBest),
+	A2 is Arity-1,
+	closest_centroit(C0, A2, Centroites, DBest, Arity, I).
+
+closest_centroit(_, 0, _, _, I, I) :- !.
+closest_centroit(C0, A, Centroites, DBest, I0, I) :-
+	arg(A, Centroites, C),
+	pt_distance(C0, C, D),
+	(   D < DBest
+	->  I1 = A,
+	    DBest1 = D
+	;   I1 = I0,
+	    DBest1 = DBest
+	),
+	A2 is A - 1,
+	closest_centroit(C0, A2, Centroites, DBest1, I1, I).
 
 
-
-
+pt_distance(point(X1,Y1), point(X2,Y2), D) :-
+	D is sqrt((X2-X1)**2+(Y2-Y1)**2).
 
 
 one_element_list(Obj, [Obj]).
