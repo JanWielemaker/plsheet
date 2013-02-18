@@ -293,18 +293,28 @@ ds_member(M, Formula) :-
 	;   M = cell_range(_,_,_,_,_)
 	).
 
-ds_set(Set) :-
-	findall(DS, ds(DS), All),
+ds_set(Sheet, Set) :-
+	findall(DS, ds(Sheet, DS), All),
 	sort(All, Set).
 
-ds(DS) :-
+ds(Sheet, DS) :-
 	ds_input(T,I),
-	(   to_ds(T, DS)
-	;   to_ds(I, DS)
+	(   to_ds(Sheet, T, DS)
+	;   to_ds(Sheet, I, DS)
 	).
 
-to_ds(cell(S,X,Y), cell_range(S,X,Y,X,Y)) :- !.
-to_ds(DS, DS).
+to_ds(S, cell(S,X,Y), cell_range(S,X,Y,X,Y)) :- !.
+to_ds(S, Range, Range) :-
+	arg(1, Range, S).
+
+:- use_module(kmeans).
+
+ds_clusters(Sheet, Count, Clusters) :-
+	ds_set(Sheet, Set),
+	k_means(ds_rect, Count, Set, Clusters).
+
+ds_rect(cell_range(_,Xs,Ys,Xe,Ye),
+	rect(Xs,Ys,Xe,Ye)).
 
 		 /*******************************
 		 *	      FEEDBACK		*

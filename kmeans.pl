@@ -7,8 +7,8 @@
 :- use_module(library(random)).
 
 :- meta_predicate
-	k_means(2, +, +, 1),
-	k_dist(2, +, +, 1),
+	k_means(2, +, +, -),
+	k_dist(2, +, +, -),
 	k_mean(2, +, -).
 
 /** <module> K-Means for clustering rectangles and points
@@ -23,15 +23,19 @@ k_means(Map, Count, Objects, Clusters) :-
 	;   randset(Count, Len, SelectionIndices),
 	    n_select(SelectionIndices, Objects, Selection),
 	    maplist(center(Map), Selection, KM1),
-	    k_iterate(Map, KM1, Objects, -, Clusters)
+	    k_iterate(Map, 1, KM1, Objects, [], Clusters)
 	).
 
-k_iterate(Map, Centroites, Objects, Old, Clusters) :-
+k_iterate(Map, Iteration, Centroites, Objects, Old, Clusters) :-
+	maplist(length, Old, OldS),
+	debug(kmean, 'Clustering ~d ... ~p', [Iteration, OldS]),
 	k_cluster(Map, Centroites, Objects, Clusters0),
 	(   Clusters0 == Old
 	->  Clusters = Old
 	;   maplist(k_mean(Map), Clusters0, NewCentroites),
-	    k_iterate(Map, NewCentroites, Objects, Clusters0, Clusters)
+	    Iteration2 is Iteration+1,
+	    k_iterate(Map, Iteration2, NewCentroites,
+		      Objects, Clusters0, Clusters)
 	).
 
 k_cluster(Map, Centroites, Objects, Clusters) :-
@@ -40,7 +44,7 @@ k_cluster(Map, Centroites, Objects, Clusters) :-
 	length(Empty, Arity),
 	maplist(=([]), Empty),
 	ClusterTerm =.. [c|Empty],
-	k_cluster_t(Objects, Map, Centroites, ClusterTerm),
+	k_cluster_t(Objects, Map, CTerm, ClusterTerm),
 	ClusterTerm =.. [_|Clusters].
 
 k_cluster_t([], _, _, _).
@@ -81,7 +85,7 @@ one_element_list(Obj, [Obj]).
 n_select(Indices, Set, Selection) :-
 	n_select(Indices, 1, Set, Selection).
 
-n_select([], _, _, []).
+n_select([], _, _, []) :- !.
 n_select([I|IT], I, [H|T0], [H|T]) :- !,
 	I2 is I+1,
 	n_select(IT, I2, T0, T).
@@ -92,7 +96,7 @@ n_select(IL, I0, Set0, Set) :-
 center(Map, Obj, point(X,Y)) :-
 	rect(Map, Obj, rect(Xs,Ys, Xe,Ye)),
 	X is (Xe+Xs)/2,
-	Y is (Ye-Ys)/2.
+	Y is (Ye+Ys)/2.
 
 %%	k_dist(+Map, +Object1, +Object2, -Distance) is det.
 %
