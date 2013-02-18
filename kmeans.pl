@@ -125,8 +125,8 @@ rect_union(rect(Xas,Yas, Xae,Yae),
 %
 %	@param Mean is a term point(MX,MY).
 
+k_mean(_, [], point(0,0)) :- !.			% ?
 k_mean(Map, Objects, point(X,Y)) :-
-	assertion(Objects \== []),
 	maplist(rect(Map), Objects, Rects),
 	maplist(area, Rects, Areas),
 	sum_xy(Rects, Areas, XSum, YSum),

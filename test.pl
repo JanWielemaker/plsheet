@@ -308,6 +308,7 @@ to_ds(S, Range, Range) :-
 	arg(1, Range, S).
 
 :- use_module(kmeans).
+:- use_module(rtree).
 
 ds_clusters(Sheet, Count, Clusters) :-
 	ds_set(Sheet, Set),
@@ -315,6 +316,11 @@ ds_clusters(Sheet, Count, Clusters) :-
 
 ds_rect(cell_range(_,Xs,Ys,Xe,Ye),
 	rect(Xs,Ys,Xe,Ye)).
+
+ds_tree(Sheet, Tree) :-
+	ds_set(Sheet, Set),
+	list_to_rtree(ds_rect, Set, Tree).
+
 
 		 /*******************************
 		 *	      FEEDBACK		*
