@@ -1,30 +1,27 @@
 :- module(test_rtree,
-	  [ show_rtree/2			% :Map, +Tree
+	  [ show_rtree/1			% +Tree
 	  ]).
 :- use_module(library(pce)).
 :- use_module(library(autowin)).
 
-:- meta_predicate
-	show_rtree(2, +).
-
-show_rtree(Map, T) :-
+show_rtree(T) :-
 	new(P, auto_sized_picture),
 	scale(T, Scale),
-	draw_tree(Map, P, Scale, 1, T),
+	draw_tree(P, Scale, 1, T),
 	send(P, open).
 
-scale(r_tree(rect(Xs,Ys,Xe,Ye),_,_), Scale) :-
+scale(r_tree(_, rect(Xs,Ys,Xe,Ye),_,_), Scale) :-
 	Size is max(Xe-Xs, Ye-Ys),
 	(   Size =:= 0
 	->  Scale = 1
 	;   Scale is 1000/Size
 	).
 
-draw_tree(Map, P, Scale, Level, r_tree(Rect, Type, Children)) :-
+draw_tree(P, Scale, Level, r_tree(Map, Rect, Type, Children)) :-
 	draw_rect(P, Scale, Level, Rect),
 	SubLevel is Level+1,
 	(   Type == internal
-	->  maplist(draw_tree(Map, P, Scale, SubLevel), Children)
+	->  maplist(draw_tree(P, Scale, SubLevel), Children)
 	;   maplist(draw_object(Map, P, Scale, SubLevel), Children)
 	).
 

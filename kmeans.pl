@@ -51,7 +51,7 @@ k_iterate(Map, Iteration, Centroites, Objects, Old, Clusters) :-
 %	centroites by taking the center of points that are at the end
 %	of the largest clusters.
 
-new_centroites(0, _, _, []).
+new_centroites(0, _, _, []) :- !.
 new_centroites(N, Map, Clusters, [Centroid|T]) :-
 	map_list_to_pairs(length, Clusters, Paired),
 	keysort(Paired, BySize),
