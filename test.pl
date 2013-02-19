@@ -325,8 +325,29 @@ ds_intersections(Sheet, DS1, DS2) :-
 	ds_set(Sheet, Set),
 	list_to_rtree(ds_rect, Set, Tree),
 	member(DS1, Set),
-	rtree_intersects(ds_rect, Tree, DS1, DS2),
+	rtree_intersects(Tree, DS1, DS2),
 	DS1 \== DS2.
+
+ds_intersections_1(Sheet, DS1, DS2) :-
+	ds_set(Sheet, Set),
+	list_to_rtree_inc(ds_rect, Set, Tree),
+	member(DS1, Set),
+	rtree_intersects(Tree, DS1, DS2),
+	DS1 \== DS2.
+
+list_to_rtree_inc(Map, List, Tree) :-
+	empty_rtree(Map, Tree0),
+	rtree_insert_list(List, Tree0, Tree).
+
+rtree_insert_list([], Tree, Tree).
+rtree_insert_list([H|T], Tree0, Tree) :-
+	(   rtree_insert(H, Tree0, Tree1)
+	->  true
+	;   gtrace,
+	    rtree_insert(H, Tree0, Tree1)
+	),
+	put_char(user_error, '.'),
+	rtree_insert_list(T, Tree1, Tree).
 
 ds_intersections_2(Sheet, DS1, DS2) :-
 	ds_set(Sheet, Set),

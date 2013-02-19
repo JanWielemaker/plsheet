@@ -32,10 +32,48 @@ k_iterate(Map, Iteration, Centroites, Objects, Old, Clusters) :-
 	k_cluster(Map, Centroites, Objects, Clusters0),
 	(   Clusters0 == Old
 	->  Clusters = Old
-	;   maplist(k_mean(Map), Clusters0, NewCentroites),
+	;   partition(==([]), Clusters0, Empty, NonEmpty),
+	    maplist(k_mean(Map), NonEmpty, NewCentroites0),
+	    (	Empty == []
+	    ->	NewCentroites = NewCentroites0
+	    ;	length(Empty, EmptyCount),
+		new_centroites(EmptyCount, Map, NonEmpty, NewPoints),
+		append(NewPoints, NewCentroites0, NewCentroites)
+	    ),
 	    Iteration2 is Iteration+1,
 	    k_iterate(Map, Iteration2, NewCentroites,
 		      Objects, Clusters0, Clusters)
+	).
+
+%%	new_centroites(+Count, :Map, +Clusters, -Centroites) is det.
+%
+%	Sometimes, clusters get empty.  This predicate introduces new
+%	centroites by taking the center of points that are at the end
+%	of the largest clusters.
+
+new_centroites(0, _, _, []).
+new_centroites(N, Map, Clusters, [Centroid|T]) :-
+	map_list_to_pairs(length, Clusters, Paired),
+	keysort(Paired, BySize),
+	last(BySize, _-Largest),
+	k_mean(Map, Largest, Center),
+	most_outside(Largest, Map, Center, Centroid),
+	N2 is N - 1,
+	selectchk(Largest, Clusters, Rest),
+	new_centroites(N2, Map, Rest, T).
+
+most_outside([H|T], Map, Center, Point) :-
+	center(Map, H, P),
+	pt_distance(P, Center, DMax0),
+	most_outside(T, Map, Center, DMax0, P, Point).
+
+most_outside([], _, _, _, Pt, Pt).
+most_outside([H|T], Map, Center, DMax0, Pt0, Pt) :-
+	center(Map, H, P),
+	pt_distance(P, Center, D),
+	(   D > DMax0
+	->  most_outside(T, Map, Center, D, P, Pt)
+	;   most_outside(T, Map, Center, DMax0, Pt0, Pt)
 	).
 
 k_cluster(Map, Centroites, Objects, Clusters) :-
@@ -125,8 +163,8 @@ rect_union(rect(Xas,Yas, Xae,Yae),
 %
 %	@param Mean is a term point(MX,MY).
 
-k_mean(_, [], point(0,0)) :- !.			% ?
 k_mean(Map, Objects, point(X,Y)) :-
+	assertion(Objects \== []),
 	maplist(rect(Map), Objects, Rects),
 	maplist(area, Rects, Areas),
 	sum_xy(Rects, Areas, XSum, YSum),
