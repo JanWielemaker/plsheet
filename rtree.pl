@@ -16,7 +16,8 @@
 /** <module> A pure Prolog R-tree implementation
 */
 
-rtree_setting(node_size, 20).
+rtree_setting(bulk_node_size, 2).
+rtree_setting(split_node_size, 20).
 
 :- meta_predicate
 	rect(2, +, -).
@@ -33,13 +34,13 @@ empty_rtree(Map, r_tree(Map, rect(0,0,0,0), leaf, [])).
 
 list_to_rtree(Map, Objects, RTree) :-
 	length(Objects, Count),
-	rtree_setting(node_size, NodeSize),
+	rtree_setting(bulk_node_size, NodeSize),
 	Count =< NodeSize, !,
 	maplist(rect(Map), Objects, Rects),
 	rect_union_list(Rects, Rect),
 	RTree = r_tree(Map, Rect, leaf, Objects).
 list_to_rtree(Map, Objects, RTree) :-
-	rtree_setting(node_size, Size),
+	rtree_setting(bulk_node_size, Size),
 	k_means(Map, Size, Objects, Clusters),
 	maplist(list_to_rtree(Map), Clusters, SubTrees),
 	maplist(rect(rtree_rect), SubTrees, Rects),
@@ -80,7 +81,7 @@ rtree_insert_(Rect, Object,
 	      NewTrees) :- !,
 	Children1 = [Object|Children0],
 	length(Children0, Count),
-	rtree_setting(node_size, NodeSize),
+	rtree_setting(split_node_size, NodeSize),
 	(   Count > NodeSize
 	->  k_means(Map, 2, Children1, Clusters),
 	    maplist(new_node(leaf, Map), Clusters, NewTrees)
@@ -96,7 +97,7 @@ rtree_insert_(Rect, Object,
 	rtree_insert_list(Children1, Rect, Object, Children2),
 	append(New, Children2, Children3),
 	length(Children3, Count),
-	rtree_setting(node_size, NodeSize),
+	rtree_setting(split_node_size, NodeSize),
 	(   Count > NodeSize
 	->  k_means(rtree_rect, 2, Children3, Clusters),
 	    maplist(new_node(internal, Map), Clusters, NewTrees)

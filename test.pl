@@ -325,6 +325,8 @@ ds_tree(Sheet, Tree) :-
 
 ds_intersections_0(Sheet, Count) :-
 	time(ds_set(Sheet, Set)),
+	length(Set, Len),
+	format('Found ~D ranges~n', [Len]),
 	time(list_to_rtree(ds_rect, Set, Tree)),
 	time(aggregate_all(count,
 			   ( member(DS1, Set),

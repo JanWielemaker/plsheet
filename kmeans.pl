@@ -5,6 +5,7 @@
 :- use_module(library(apply)).
 :- use_module(library(lists)).
 :- use_module(library(random)).
+:- set_prolog_flag(optimise, true).
 
 :- meta_predicate
 	k_means(2, +, +, -),
