@@ -24,7 +24,7 @@ start_server :-
 	assertz(server_url(URL)),
 	www_open_url(URL).
 
-file('E-Design WindEnergie.ods').
+file('E-Design-v2.205 sept 2011.ods').
 sheet('WindopLand').
 
 dom(DOM) :-
@@ -37,7 +37,9 @@ dom(Member, DOM) :-
 
 load :-
 	file(File),
-	load(File).
+	load(File),
+	consult('ds_formulas.db'),
+	ds_graph.
 
 load(File) :-
 	ods_unload,

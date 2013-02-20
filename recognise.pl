@@ -1,19 +1,20 @@
 :- module(recognise,
-	  [ anchor/2,			% DataSource, Type
+	  [ anchor/2,			% :DataSource, Type
 	    unassigned_anchor/2,	% :DataSource, ?Type
 
-	    block/2,			% DataSource, Type
-	    row/2,			% DataSource, Type
-	    col/2,			% DataSource, Type
+	    block/2,			% :DataSource, Type
+	    row/2,			% :DataSource, Type
+	    col/2,			% :DataSource, Type
 
-	    row/6,			% Sheet, SX,SY, EX,SY, Type
-	    col/6,			% Sheet, SX,SY, EX,SY, Type
-	    block/6,			% Sheet, SX,SY, EX,SY, Type
+	    row/6,			% :Sheet, SX,SY, EX,SY, Type
+	    col/6,			% :Sheet, SX,SY, EX,SY, Type
+	    block/6,			% :Sheet, SX,SY, EX,SY, Type
 
 	    cell_class/1,		% ?Class
 	    cell_class/4,		% :Sheet, ?SX, ?SY, ?Class
 
-	    sheet_bb/2			% :Sheet, -DataSource
+	    sheet_bb/2,			% :Sheet, -DataSource
+	    ds_join/2			% +DataSources, -Joined
 	  ]).
 :- use_module(ods_table).
 :- use_module(datasource).
@@ -243,3 +244,9 @@ cell_exists(M:Sheet,X,Y) :-
 	cell(M:Sheet, X,Y, _,_,_,_,_),
 	\+ empty_cell(M:Sheet, X, Y).
 
+%%	ds_join(+DSList, -GroupedDSList) is det.
+%
+%	Create larger datasources by grouping adjacent ones.
+
+ds_join(List, List) :-
+	tbd.

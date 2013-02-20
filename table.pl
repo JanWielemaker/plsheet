@@ -2,6 +2,7 @@
 	  [ assert_tables/2,		% ?Sheet, ?Type
 	    data_blocks/3,		% :Sheet, ?Type, ?Blocks
 	    assert_blocks/2,		% ?Sheet, ?Type
+	    block_union_new_non_empty/3,% +Blocks, -Union, -NewNonEmpty
 	    tables/3,			% ?Sheet, +Type, -Tables
 	    table/2,			% +Data, -Support
 
@@ -202,7 +203,16 @@ block_union_new_non_empty(Blocks, UnionBlock, NonEmptyDS) :-
 	block_union(Blocks, UnionBlock),
 	object_union(UnionBlock, Union),
 	maplist(object_union, Blocks, Parts),
-	tbd.
+	ds_sheet(Union, Sheet),
+	findall(cell_range(Sheet,X,Y,X,Y),
+		( ds_inside(Union, X, Y),
+		  \+ ( member(Part, Parts),
+		       ds_inside(Part, X, Y)
+		     ),
+		  \+ cell_class(Sheet, X, Y, empty)
+		),
+		NonEmptyCells),
+	ds_join(NonEmptyCells, NonEmptyDS).
 
 %%	partition_graph(+Edges, -VerticeSets) is det.
 %
@@ -218,7 +228,6 @@ partition_graph2(Graph, [Set1|Sets]) :-
 	reachable(V0, Graph, Set1),
 	del_vertices(Graph, Set1, Graph2),
 	partition_graph2(Graph2, Sets).
-
 
 
 		 /*******************************
