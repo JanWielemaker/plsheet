@@ -323,19 +323,23 @@ ds_tree(Sheet, Tree) :-
 	ds_set(Sheet, Set),
 	list_to_rtree(ds_rect, Set, Tree).
 
-ds_intersections(Sheet, DS1, DS2) :-
+ds_intersections_0(Sheet, Count) :-
 	time(ds_set(Sheet, Set)),
 	time(list_to_rtree(ds_rect, Set, Tree)),
-	member(DS1, Set),
-	rtree_intersects(Tree, DS1, DS2),
-	DS1 \== DS2.
+	time(aggregate_all(count,
+			   ( member(DS1, Set),
+			     rtree_intersects(Tree, DS1, DS2),
+			     DS1 \== DS2
+			   ), Count)).
 
-ds_intersections_1(Sheet, DS1, DS2) :-
-	ds_set(Sheet, Set),
-	list_to_rtree_inc(ds_rect, Set, Tree),
-	member(DS1, Set),
-	rtree_intersects(Tree, DS1, DS2),
-	DS1 \== DS2.
+ds_intersections_1(Sheet, Count) :-
+	time(ds_set(Sheet, Set)),
+	time(list_to_rtree_inc(ds_rect, Set, Tree)),
+	time(aggregate_all(count,
+			   ( member(DS1, Set),
+			     rtree_intersects(Tree, DS1, DS2),
+			     DS1 \== DS2
+			   ), Count)).
 
 list_to_rtree_inc(Map, List, Tree) :-
 	empty_rtree(Map, Tree0),

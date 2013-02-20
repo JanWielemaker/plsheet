@@ -58,28 +58,6 @@ fill_empty([_|T], Clusters0, Clusters) :-
 	fill_empty(T, [[Obj],RestCluster|Clusters1], Clusters).
 
 
-%%	new_centroites(+Count, :Map, +Clusters, -Centroites) is det.
-%
-%	Sometimes, clusters get empty.  This   predicate  introduces new
-%	centroites by taking a random corner of random clusters.
-
-new_centroites(0, _, _, []) :- !.
-new_centroites(N, Map, Clusters, [Centroit|T]) :-
-	random_select(Cluster, Clusters, Rest),
-	maplist(rect(Map), Cluster, Rects),
-	rect_union_list(Rects, Rect),
-	random_corner(Rect, Centroit),
-	N2 is N - 1,
-	new_centroites(N2, Map, Rest, T).
-
-random_corner(rect(Xs,Ys,Xe,Ye), Point) :-
-	random_member(Point,
-		      [ point(Xs,Ys),
-			point(Xs,Ye),
-			point(Xe,Ys),
-			point(Xe,Ye)
-		      ]).
-
 k_cluster(Map, Centroites, Objects, Clusters) :-
 	CTerm =.. [c|Centroites],
 	functor(CTerm, _, Arity),

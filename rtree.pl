@@ -16,7 +16,7 @@
 /** <module> A pure Prolog R-tree implementation
 */
 
-rtree_setting(node_size, 2).
+rtree_setting(node_size, 20).
 
 :- meta_predicate
 	rect(2, +, -).
