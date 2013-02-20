@@ -16,7 +16,7 @@
 /** <module> A pure Prolog R-tree implementation
 */
 
-rtree_setting(node_size, 4).
+rtree_setting(node_size, 2).
 
 :- meta_predicate
 	rect(2, +, -).
@@ -69,9 +69,15 @@ rtree_insert(Object, RTree0, RTree) :-
 	    RTree = r_tree(Map, Union, internal, NewTrees)
 	).
 
-rtree_insert(Rect, Object,
-	     r_tree(Map, Rect0, leaf, Children0),
-	     NewTrees) :- !,
+rtree_insert(Rect, Obj, RTree0, RTrees) :-
+	rtree_insert_(Rect, Obj, RTree0, RTrees), !.
+rtree_insert(Rect, Obj, RTree0, RTrees) :-
+	gtrace,
+	rtree_insert_(Rect, Obj, RTree0, RTrees).
+
+rtree_insert_(Rect, Object,
+	      r_tree(Map, Rect0, leaf, Children0),
+	      NewTrees) :- !,
 	Children1 = [Object|Children0],
 	length(Children0, Count),
 	rtree_setting(node_size, NodeSize),
@@ -81,8 +87,9 @@ rtree_insert(Rect, Object,
 	;   rect_union(Rect0, Rect, Rect1),
 	    NewTrees = [r_tree(Map, Rect1, leaf, Children1)]
 	).
-rtree_insert(Rect, Object, RTree0, NewTrees) :-
-	RTree0 = r_tree(Map, Rect0, internal, Children0),
+rtree_insert_(Rect, Object,
+	      r_tree(Map, Rect0, internal, Children0),
+	      NewTrees) :-
 	primary_child(Rect, Child, Children0),
 	rtree_insert(Rect, Object, Child, New),
 	selectchk(Child, Children0, Children1),

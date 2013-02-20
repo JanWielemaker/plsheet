@@ -324,8 +324,8 @@ ds_tree(Sheet, Tree) :-
 	list_to_rtree(ds_rect, Set, Tree).
 
 ds_intersections(Sheet, DS1, DS2) :-
-	ds_set(Sheet, Set),
-	list_to_rtree(ds_rect, Set, Tree),
+	time(ds_set(Sheet, Set)),
+	time(list_to_rtree(ds_rect, Set, Tree)),
 	member(DS1, Set),
 	rtree_intersects(Tree, DS1, DS2),
 	DS1 \== DS2.

@@ -23,58 +23,62 @@ k_means(Map, Count, Objects, Clusters) :-
 	;   randset(Count, Len, SelectionIndices),
 	    n_select(SelectionIndices, Objects, Selection),
 	    maplist(center(Map), Selection, KM1),
-	    k_iterate(Map, 1, KM1, Objects, [], Clusters)
+	    MaxIter is max(10, log(Len)*5),
+	    k_iterate(Map, 1, MaxIter, KM1, Objects, [], Clusters)
 	).
 
-k_iterate(Map, Iteration, Centroites, Objects, Old, Clusters) :-
+k_iterate(Map, Iteration, MaxIter, Centroites, Objects, Old, Clusters) :-
 	maplist(length, Old, OldS),
 	debug(kmean, 'Clustering ~d ... ~p', [Iteration, OldS]),
 	k_cluster(Map, Centroites, Objects, Clusters0),
 	(   Clusters0 == Old
 	->  Clusters = Old
 	;   partition(==([]), Clusters0, Empty, NonEmpty),
-	    maplist(k_mean(Map), NonEmpty, NewCentroites0),
-	    (	Empty == []
-	    ->	NewCentroites = NewCentroites0
-	    ;	length(Empty, EmptyCount),
-		new_centroites(EmptyCount, Map, NonEmpty, NewPoints),
-		append(NewPoints, NewCentroites0, NewCentroites)
-	    ),
+	    fill_empty(Empty, NonEmpty, Clusters1),
 	    Iteration2 is Iteration+1,
-	    k_iterate(Map, Iteration2, NewCentroites,
-		      Objects, Clusters0, Clusters)
+	    (	Iteration2 < MaxIter
+	    ->  maplist(k_mean(Map), Clusters1, NewCentroites),
+		k_iterate(Map, Iteration2, MaxIter, NewCentroites,
+			  Objects, Clusters1, Clusters)
+	    ;	Clusters = Clusters1
+	    )
 	).
+
+%%	fill_empty(+Empty, +NonEmpty, -Clusters)
+%
+%	If we end up with empty clusters, take some random element
+%	from the remaining clusters to fill them up.
+
+fill_empty([], Clusters, Clusters).
+fill_empty([_|T], Clusters0, Clusters) :-
+	repeat,
+	random_select(Cluster, Clusters0, Clusters1),
+	Cluster = [_,_|_], !,
+	random_select(Obj, Cluster, RestCluster),
+	fill_empty(T, [[Obj],RestCluster|Clusters1], Clusters).
+
 
 %%	new_centroites(+Count, :Map, +Clusters, -Centroites) is det.
 %
-%	Sometimes, clusters get empty.  This predicate introduces new
-%	centroites by taking the center of points that are at the end
-%	of the largest clusters.
+%	Sometimes, clusters get empty.  This   predicate  introduces new
+%	centroites by taking a random corner of random clusters.
 
 new_centroites(0, _, _, []) :- !.
-new_centroites(N, Map, Clusters, [Centroid|T]) :-
-	map_list_to_pairs(length, Clusters, Paired),
-	keysort(Paired, BySize),
-	last(BySize, _-Largest),
-	k_mean(Map, Largest, Center),
-	most_outside(Largest, Map, Center, Centroid),
+new_centroites(N, Map, Clusters, [Centroit|T]) :-
+	random_select(Cluster, Clusters, Rest),
+	maplist(rect(Map), Cluster, Rects),
+	rect_union_list(Rects, Rect),
+	random_corner(Rect, Centroit),
 	N2 is N - 1,
-	selectchk(Largest, Clusters, Rest),
 	new_centroites(N2, Map, Rest, T).
 
-most_outside([H|T], Map, Center, Point) :-
-	center(Map, H, P),
-	pt_distance(P, Center, DMax0),
-	most_outside(T, Map, Center, DMax0, P, Point).
-
-most_outside([], _, _, _, Pt, Pt).
-most_outside([H|T], Map, Center, DMax0, Pt0, Pt) :-
-	center(Map, H, P),
-	pt_distance(P, Center, D),
-	(   D > DMax0
-	->  most_outside(T, Map, Center, D, P, Pt)
-	;   most_outside(T, Map, Center, DMax0, Pt0, Pt)
-	).
+random_corner(rect(Xs,Ys,Xe,Ye), Point) :-
+	random_member(Point,
+		      [ point(Xs,Ys),
+			point(Xs,Ye),
+			point(Xe,Ys),
+			point(Xe,Ye)
+		      ]).
 
 k_cluster(Map, Centroites, Objects, Clusters) :-
 	CTerm =.. [c|Centroites],
@@ -155,6 +159,14 @@ rect_union(rect(Xas,Yas, Xae,Yae),
 	Xe is max(Xae,Xbe),
 	Ys is min(Yas,Ybs),
 	Ye is max(Yae,Ybe).
+
+rect_union_list([H|T], Union) :- !,
+	rect_union_list(T, H, Union).
+
+rect_union_list([], Union, Union).
+rect_union_list([H|T], Union0, Union) :-
+	rect_union(H, Union0, Union1),
+	rect_union_list(T, Union1, Union).
 
 %%	k_mean(:Map, +Objects, -Mean) is det.
 %
