@@ -34,8 +34,13 @@ k_iterate(Map, Iteration, MaxIter, Centroites, Objects, Old, Clusters) :-
 	k_cluster(Map, Centroites, Objects, Clusters0),
 	(   Clusters0 == Old
 	->  Clusters = Old
-	;   partition(==([]), Clusters0, Empty, NonEmpty),
-	    fill_empty(Empty, NonEmpty, Clusters1),
+	;   length(Centroites, Needed),
+	    length(Clusters0, CCount),
+	    (	CCount < Needed
+	    ->	Extra is Needed-CCount,
+		fill_empty(Extra, Clusters0, Clusters1)
+	    ;	Clusters1 = Clusters0
+	    ),
 	    Iteration2 is Iteration+1,
 	    (	Iteration2 < MaxIter
 	    ->  maplist(k_mean(Map), Clusters1, NewCentroites),
@@ -50,31 +55,27 @@ k_iterate(Map, Iteration, MaxIter, Centroites, Objects, Old, Clusters) :-
 %	If we end up with empty clusters, take some random element
 %	from the remaining clusters to fill them up.
 
-fill_empty([], Clusters, Clusters).
-fill_empty([_|T], Clusters0, Clusters) :-
+fill_empty(0, Clusters, Clusters).
+fill_empty(N, Clusters0, Clusters) :-
 	repeat,
 	random_select(Cluster, Clusters0, Clusters1),
 	Cluster = [_,_|_], !,
 	random_select(Obj, Cluster, RestCluster),
-	fill_empty(T, [[Obj],RestCluster|Clusters1], Clusters).
+	succ(N2, N),
+	fill_empty(N2, [[Obj],RestCluster|Clusters1], Clusters).
 
+%%	k_cluster(:Map, +Centroites, +Objects, -Clusters) is det.
 
 k_cluster(Map, Centroites, Objects, Clusters) :-
 	CTerm =.. [c|Centroites],
-	functor(CTerm, _, Arity),
-	length(Empty, Arity),
-	maplist(=([]), Empty),
-	ClusterTerm =.. [c|Empty],
-	k_cluster_t(Objects, Map, CTerm, ClusterTerm),
-	ClusterTerm =.. [_|Clusters].
+	maplist(closest_centroit_pair(Map, CTerm), Objects, Pairs),
+	keysort(Pairs, Sorted),
+	group_pairs_by_key(Sorted, Grouped),
+	pairs_values(Grouped, Clusters).
 
-k_cluster_t([], _, _, _).
-k_cluster_t([H|T], Map, Centroites, Clusters) :-
-	center(Map, H, CH),
-	closest_centroit(CH, Centroites, I),
-	arg(I, Clusters, Cluster),
-	setarg(I, Clusters, [H|Cluster]),
-	k_cluster_t(T, Map, Centroites, Clusters).
+closest_centroit_pair(Map, CTerm, Object, Centroit-Object) :-
+	center(Map, Object, Center),
+	closest_centroit(Center, CTerm, Centroit).
 
 closest_centroit(C0, Centroites, I) :-
 	functor(Centroites, _, Arity),
